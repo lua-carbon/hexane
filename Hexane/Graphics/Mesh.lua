@@ -6,14 +6,23 @@
 local Hexane = (...)
 local Carbon = Hexane.Carbon
 local OOP = Carbon.OOP
+local GraphicsNotInitializedException = Hexane.Exceptions.GraphicsNotInitializedException
 
 Hexane.Bindings.OpenGL:ImportAll()
 
 local ffi = require("ffi")
 
+local types = {
+	float = GL.FLOAT
+}
+
 local Mesh = OOP:Class()
 
-function Mesh:_init(l_vertices, l_elements)
+function Mesh:_init(l_vertices, l_elements, attributes)
+	if (not Hexane.Graphics:IsInitialized()) then
+		return nil, GraphicsNotInitializedException:New()
+	end
+
 	local p_vao = ffi.new("GLuint[1]")
 	gl.GenVertexArrays(1, p_vao)
 	gl.BindVertexArray(p_vao[0])
@@ -38,7 +47,19 @@ function Mesh:_init(l_vertices, l_elements)
 		gl.GenBuffers(1, p_ebo)
 		gl.BindBuffer(GL.ELEMENT_ARRAY_BUFFER, p_ebo[0])
 		gl.BufferData(GL.ELEMENT_ARRAY_BUFFER, ffi.sizeof(elements), elements, GL.STATIC_DRAW)
+		self.__ebo = p_ebo[0]
 	end
+
+	if (attributes) then
+		for i, v in ipairs(attributes) do
+			v:Apply()
+		end
+	end
+end
+
+function Mesh:AddAttribute(attribute)
+	gl.BindVertexArray(self.__vao)
+	attribute:Apply()
 end
 
 function Mesh:Draw()

@@ -29,7 +29,7 @@ function Window:_init(info)
 	local window, exception = info:CreateWindow()
 
 	if (not window) then
-		return false, exception
+		return nil, exception
 	end
 
 	self.__info = info
@@ -54,6 +54,12 @@ end
 
 function Window:SetPosition(x, y)
 	GLFW.SetWindowPos(self.__window, x, y)
+end
+
+function Window:GetMousePosition()
+	local pos = ffi.new("double[2]")
+	GLFW.GetCursorPos(self.__window, pos, pos + 1)
+	return pos[0], pos[1]
 end
 
 function Window:GetNativeHandle()

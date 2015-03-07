@@ -13,6 +13,10 @@ local Graphics = {
 	__initialized = false
 }
 
+function Graphics:IsInitialized()
+	return self.__initialized
+end
+
 function Graphics:Initialize()
 	if (self.__initialized) then
 		return false

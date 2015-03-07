@@ -100,8 +100,8 @@ function WindowInfo:CreateWindow()
 		end
 	end
 
-	if (not window) then
-		return false, Hexane.Exceptions.ContextCreationException:New()
+	if (window == nil) then
+		return nil, Hexane.Exceptions.ContextCreationException:New()
 	end
 
 	GLFW.MakeContextCurrent(window)

@@ -21,15 +21,34 @@ local types = {
 }
 
 local Shader = OOP:Class()
+	:Members {
+		__uniforms = {}
+	}
 
 function Shader:_init()
 	self.Program = gl.CreateProgram()
 end
 
-function Shader:AddAttribute(name, count, typeof, stride, size)
-	local attrib = gl.GetAttribLocation(self.Program, name)
-	gl.VertexAttribPointer(attrib, count, types[typeof], GL.FALSE, stride * ffi.sizeof(typeof), ffi.cast("void*", size * ffi.sizeof(typeof)))
-	gl.EnableVertexAttribArray(attrib)
+function Shader:GetAttributeLocation(name)
+	return gl.GetAttribLocation(self.Program, name)
+end
+
+function Shader:AddUniform(name, suffix)
+	self.__uniforms[name] = {suffix, gl.GetUniformLocation(self.Program, name)}
+end
+
+function Shader:SetUniform(name, ...)
+	local uniform = self.__uniforms[name]
+
+	if (uniform) then
+		local suffix = uniform[1]
+		local location = uniform[2]
+		gl["Uniform" .. suffix](location, ...)
+	end
+end
+
+function Shader:AddAttribute(position, name)
+	gl.BindAttribLocation(self.Program, position, name)
 end
 
 function Shader:BindFragDataLocation(position, name)
