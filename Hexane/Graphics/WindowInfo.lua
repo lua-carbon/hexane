@@ -21,6 +21,7 @@ local WindowInfo = OOP:Class()
 		Debug = false,
 		Resizable = false,
 		ForwardCompatible = false,
+		VSync = false,
 		Windowed = true,
 		Borderless = false,
 		DepthBits = 0,
@@ -36,8 +37,7 @@ local WindowInfo = OOP:Class()
 			{3.2, "Core"},
 			{3.1, "Core"},
 			{3.0, "Core"},
-			{2.1, "Any"},
-			{2.0, "Any"}
+			{2.1, "Any"}
 		},
 		Width = 800,
 		Height = 600,
@@ -102,6 +102,14 @@ function WindowInfo:CreateWindow()
 
 	if (not window) then
 		return false, Hexane.Exceptions.ContextCreationException:New()
+	end
+
+	GLFW.MakeContextCurrent(window)
+
+	if (self.VSync) then
+		GLFW.SwapInterval(1)
+	else
+		GLFW.SwapInterval(0)
 	end
 
 	return window

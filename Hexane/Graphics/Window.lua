@@ -10,6 +10,8 @@ local WindowInfo = Hexane.Graphics.WindowInfo
 local GLFW = Hexane.Bindings.GLFW
 Hexane.Bindings.OpenGL:ImportAll()
 
+local ffi = require("ffi")
+
 local Window = OOP:Class()
 	:Attributes {
 		InstanceIndirection = true
@@ -32,6 +34,26 @@ function Window:_init(info)
 
 	self.__info = info
 	self.__window = window
+end
+
+function Window:GetSize()
+	local size = ffi.new("int[2]")
+	GLFW.GetWindowSize(self.__window, size, size + 1)
+	return size[0], size[1]
+end
+
+function Window:SetSize(w, h)
+	GLFW.SetWindowSize(self.__window, w, h)
+end
+
+function Window:GetPosition()
+	local pos = ffi.new("int[2]")
+	GLFW.GetWindowPos(self.__window, pos, pos + 1)
+	return pos[0], pos[1]
+end
+
+function Window:SetPosition(x, y)
+	GLFW.SetWindowPos(self.__window, x, y)
 end
 
 function Window:GetNativeHandle()
@@ -64,7 +86,15 @@ function Window:PollEvents()
 	GLFW.PollEvents()
 end
 
-function Window:MakeCurrent()
+function Window:SetVSync(vsync)
+	if (vsync) then
+		GLFW.SwapInterval(1)
+	else
+		GLFW.SwapInterval(0)
+	end
+end
+
+function Window:Use()
 	GLFW.MakeContextCurrent(self.__window)
 end
 
