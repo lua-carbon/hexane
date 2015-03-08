@@ -1,4 +1,4 @@
--- Sample: Make a Window, draw colored Hexane logos!
+-- Sample: Make a Window, draw a couple rectangle meshes
 
 local ffi = require("ffi")
 local Hexane = require("Hexane")
@@ -75,10 +75,12 @@ void main() {
 }
 ]]
 
--- Create a shader using our sources above
-local shader = Hexane.Graphics.Shader:New()
-shader:Attach("vertex", vertex_source)
-shader:Attach("fragment", fragment_source)
+-- Create a shader program using our sources above
+-- You could also create individual Shader objects for each piece
+-- and link those in to prevent recompilation.
+local shader = Hexane.Graphics.ShaderProgram:New()
+shader:AttachSource("vertex", vertex_source)
+shader:AttachSource("fragment", fragment_source)
 
 -- Assign these attributes positions
 shader:AddAttribute(0, "position")

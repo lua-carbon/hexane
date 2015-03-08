@@ -1,6 +1,8 @@
 --[[
 	Hexane for LuaJIT
 	Shader Class
+
+	Contains individual shaders, like vertex shaders and pixel shaders.
 ]]
 
 local Hexane = (...)
@@ -16,52 +18,9 @@ local shader_types = {
 	fragment = GL.FRAGMENT_SHADER
 }
 
-local types = {
-	float = GL.FLOAT
-}
-
 local Shader = OOP:Class()
-	:Members {
-		__uniforms = {}
-	}
 
-function Shader:_init()
-	self.Program = gl.CreateProgram()
-end
-
-function Shader:Destroy()
-	if (self.Program) then
-		gl.DeleteProgram(self.Program)
-	end
-end
-
-function Shader:GetAttributeLocation(name)
-	return gl.GetAttribLocation(self.Program, name)
-end
-
-function Shader:AddUniform(name, suffix)
-	self.__uniforms[name] = {suffix, gl.GetUniformLocation(self.Program, name)}
-end
-
-function Shader:SetUniform(name, ...)
-	local uniform = self.__uniforms[name]
-
-	if (uniform) then
-		local suffix = uniform[1]
-		local location = uniform[2]
-		gl["Uniform" .. suffix](location, ...)
-	end
-end
-
-function Shader:AddAttribute(position, name)
-	gl.BindAttribLocation(self.Program, position, name)
-end
-
-function Shader:BindFragDataLocation(position, name)
-	gl.BindFragDataLocation(self.Program, position, name)
-end
-
-function Shader:Attach(shader_type, source)
+function Shader:_init(shader_type, source)
 	local interned = ffi.new("const char *const[1]", ffi.new("const char*", source))
 
 	local shader = gl.CreateShader(shader_types[shader_type])
@@ -77,17 +36,11 @@ function Shader:Attach(shader_type, source)
 		error(ffi.string(buffer))
 	end
 
-	gl.AttachShader(self.Program, shader)
+	self.Type = shader_type
+	self.__source = source
+	self.__shader = shader
 
 	return shader
-end
-
-function Shader:Link()
-	gl.LinkProgram(self.Program)
-end
-
-function Shader:Use()
-	gl.UseProgram(self.Program)
 end
 
 return Shader
