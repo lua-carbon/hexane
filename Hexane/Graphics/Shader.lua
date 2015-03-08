@@ -29,6 +29,12 @@ function Shader:_init()
 	self.Program = gl.CreateProgram()
 end
 
+function Shader:Destroy()
+	if (self.Program) then
+		gl.DeleteProgram(self.Program)
+	end
+end
+
 function Shader:GetAttributeLocation(name)
 	return gl.GetAttribLocation(self.Program, name)
 end

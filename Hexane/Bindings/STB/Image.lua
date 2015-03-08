@@ -4,7 +4,7 @@
 ]]
 
 local ffi = require("ffi")
-local stb_image = ffi.load("stb")
+local stb_image = ffi.load("libhexane")
 
 ffi.cdef([==[
 /* stb_image v2.02

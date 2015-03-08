@@ -1,4 +1,5 @@
 ![Hexane for LuaJIT][hexane_banner]
+
 ![shield_license]
 ![shield_release_version]
 ![shield_prerelease_version]
@@ -9,8 +10,8 @@ Hexane is a suite of libraries intended to promote and ease game development in 
 See [releases.md](releases.md) for the releases history of Hexane.
 
 # Dependencies
-- GLFW 3.1
-- stb (included in `stb` directory)
+- [GLFW](//glfw.org) 3.1
+- stb (included in `deps` directory)
 
 # Setting Up
 Some platforms may have binary dependencies already built for them. Check the releases section on GitHub!
@@ -18,7 +19,7 @@ Some platforms may have binary dependencies already built for them. Check the re
 # Windows
 Get the latest GLFW 3.1 in DLL form, place it at `bin/glfw3.dll`.
 
-Compile all the files in the `stb` folder to a DLL, place it at `bin/stb.dll`.
+Compile all the files in the `deps` folder to a DLL, place it at `bin/deps.dll`.
 
 [carbon]: https://github.com/lua-carbon/carbon
 [hexane_banner]: https://raw.githubusercontent.com/luajit-hexane/hexane/master/assets/hexane-banner.png
