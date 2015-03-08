@@ -376,7 +376,7 @@ License:
 // and only if iPhone convert-to-rgb processing is on).
 //
 
-
+#define STB_IMAGE_IMPLEMENTATION
 #ifndef STBI_NO_STDIO
 #include <stdio.h>
 #endif // STBI_NO_STDIO

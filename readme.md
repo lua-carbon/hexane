@@ -11,7 +11,7 @@ See [releases.md](releases.md) for the releases history of Hexane.
 
 # Dependencies
 - [GLFW](//glfw.org) 3.1
-- stb (included in `deps` directory)
+- stb (included in `libhexane` directory)
 
 # Setting Up
 Some platforms may have binary dependencies already built for them. Check the releases section on GitHub!
@@ -19,7 +19,7 @@ Some platforms may have binary dependencies already built for them. Check the re
 # Windows
 Get the latest GLFW 3.1 in DLL form, place it at `bin/glfw3.dll`.
 
-Compile all the files in the `deps` folder to a DLL, place it at `bin/deps.dll`.
+Compile all the files in the `libhexane` folder to a DLL, place it at `bin/libhexane.dll`.
 
 [carbon]: https://github.com/lua-carbon/carbon
 [hexane_banner]: https://raw.githubusercontent.com/luajit-hexane/hexane/master/assets/hexane-banner.png

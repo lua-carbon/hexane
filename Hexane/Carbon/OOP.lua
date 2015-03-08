@@ -183,7 +183,13 @@ OOP:RegisterAttribute("Class", "SparseInstances",
 OOP.BaseClass = {
 	__members = {},
 	__base_members = {},
-	__metatable = {},
+	__metatable = {
+		__gc = function(self)
+			if (self.Destroy) then
+				self:Destroy()
+			end
+		end
+	},
 	__attributes = {},
 	Is = {}
 }

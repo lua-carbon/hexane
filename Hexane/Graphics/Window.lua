@@ -12,16 +12,22 @@ Hexane.Bindings.OpenGL:ImportAll()
 
 local ffi = require("ffi")
 
-local Window = OOP:Class()
-	:Attributes {
-		InstanceIndirection = true
-	}
-
 local inverse_profiles = {
 	[tonumber(GLFW.OPENGL_CORE_PROFILE)] = "Core",
 	[tonumber(GLFW.OPENGL_COMPAT_PROFILE)] = "Compatibility",
 	[tonumber(GLFW.OPENGL_ANY_PROFILE)] = "Any"
 }
+
+local blends = {
+	["src_alpha"] = GL.SRC_ALPHA,
+	["one_minus_src_alpha"] = GL.ONE_MINUS_SRC_ALPHA
+	-- todo: the rest of these
+}
+
+local Window = OOP:Class()
+	:Attributes {
+		InstanceIndirection = true
+	}
 
 function Window:_init(info)
 	info = info or WindowInfo:New()
@@ -34,6 +40,16 @@ function Window:_init(info)
 
 	self.__info = info
 	self.__window = window
+
+	gl.ClearColor(0, 0, 0, 1)
+end
+
+function Window:SetBlendMode(a, b)
+	gl.BlendFunc(blends[a], blends[b])
+end
+
+function Window:EnableAlphaBlending()
+	gl.Enable(GL.BLEND)
 end
 
 function Window:GetSize()
