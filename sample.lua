@@ -1,9 +1,10 @@
--- Sample: Make a Window, draw a couple rectangle meshes
+-- Sample: Make a Window, draw a couple meshes, one rotated with the mouse.
 
 local ffi = require("ffi")
 local Hexane = require("Hexane")
-local Time = Hexane.Carbon.Time
-local Nanotube = Hexane.Carbon.Nanotube
+local Carbon = Hexane.Carbon
+local Time = Carbon.Time
+local Nanotube = Carbon.Nanotube
 
 -- Create an object with information about the window we'll be making.
 local info = Hexane.Graphics.WindowInfo:New()
@@ -27,6 +28,10 @@ window:SetBlendMode("src_alpha", "one_minus_src_alpha")
 -- Create a 'Clearer' which manages clearing the buffer between frames
 local clearer = Hexane.Graphics.Clearer:New()
 
+
+local w, h = window:GetSize()
+local ratio = h / w
+
 -- Create a mesh given a list of vertices (VBO) and elements (EBO)
 local vertices = {
 	-0.5, 0.5, 1, 0, 0, 0, 0,
@@ -44,7 +49,7 @@ local elements = {
 local vertex_source = [[
 #version 150
 
-uniform vec2 rect_position;
+uniform mat4 transform;
 
 in vec2 position;
 in vec3 color;
@@ -53,10 +58,13 @@ in vec2 texcoord;
 out vec3 Color;
 out vec2 Texcoord;
 
+// 16:9 aspect ratio transformation
+vec2 ratio = vec2(0.5625, 1);
+
 void main() {
 	Color = color;
 	Texcoord = texcoord;
-	gl_Position = vec4(rect_position + position, 0.0, 1.0);
+	gl_Position = transform * vec4(position, 0.0, 1.0) * vec4(ratio, 0.0, 1.0);
 }
 ]]
 
@@ -95,8 +103,7 @@ shader:Use()
 shader:BindFragDataLocation(0, "outColor")
 
 -- Add a rect_position uniform for positioning our rectangles
-shader:AddUniform("rect_position", "2f")
-shader:SetUniform("rect_position", 0, 0)
+shader:AddUniform("transform", "Matrix4fv")
 shader:AddUniform("tex", "1i")
 shader:SetUniform("tex", 0)
 
@@ -143,6 +150,8 @@ local ot = Time:Get()
 local t = Time:Get()
 local dt = t - ot
 
+Hexane.Bindings.OpenGL:ImportAll()
+
 -- Tell the tube what to do on draw
 tube:On("Draw", function(dt)
 	clearer:Draw()
@@ -150,10 +159,19 @@ tube:On("Draw", function(dt)
 	local w, h = window:GetSize()
 	local x, y = window:GetMousePosition()
 
-	shader:SetUniform("rect_position", 0, 0)
+	local x_theta = math.pi * (2 * x / w - 1)
+	local y_theta = math.pi * (2 * y / h - 1)
+
+	-- This will hopefully be a lot nicer when the Matrix library fills out in Carbon.
+	local c_rotation = Carbon.Math.Matrix4x4:RotationZ(x_theta)
+		:MultiplyMatrixInPlace(Carbon.Math.Matrix4x4:RotationY(y_theta))
+	local rotation = c_rotation:ToNative()
+
+	local identity = Hexane.Carbon.Math.Matrix4x4:Identity():ToNative()
+	shader:SetUniform("transform", 1, GL.FALSE, identity)
 	mesh:Draw()
 
-	shader:SetUniform("rect_position", 2 * x / w - 1, 1 - 2 * y / h)
+	shader:SetUniform("transform", 1, GL.FALSE, rotation)
 	mesh2:Draw()
 end)
 
