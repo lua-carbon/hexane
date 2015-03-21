@@ -20,7 +20,7 @@ local shader_types = {
 
 local Shader = OOP:Class()
 
-function Shader:_init(shader_type, source)
+function Shader:Init(shader_type, source)
 	local interned = ffi.new("const char *const[1]", ffi.new("const char*", source))
 
 	local shader = gl.CreateShader(shader_types[shader_type])

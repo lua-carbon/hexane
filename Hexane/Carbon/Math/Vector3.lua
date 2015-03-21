@@ -1,13 +1,18 @@
 --[[
 	Carbon for Lua
-	Vector3 Object
+	#class Math.Vector3
+	#inherits Math.Vector<3>
 
-	Provides a 3-length vector with X, Y, and Z keys.
+	#description {
+		A 3-length vector.
+
+		The loose form of a @Vector3, `@loose<@Vector3>` is of the form `(x, y, z)`.
+	}
 ]]
 
 local Carbon = (...)
 
-local Vector3, except = Carbon.Math.VectorN:Generate({"X", "Y", "Z"})
+local Vector3, except = Carbon.Math.Vector:Generate(3)
 
 if (not Vector3) then
 	if (except.Is[Carbon.Exceptions.CodeGenerationException]) then

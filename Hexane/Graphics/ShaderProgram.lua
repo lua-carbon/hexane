@@ -24,7 +24,7 @@ local ShaderProgram = OOP:Class()
 		__shaders = {}
 	}
 
-function ShaderProgram:_init()
+function ShaderProgram:Init()
 	self.Program = gl.CreateProgram()
 end
 

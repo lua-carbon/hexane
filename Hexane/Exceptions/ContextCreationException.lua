@@ -13,7 +13,7 @@ local ContextCreationException = OOP:Class()
 		Message = "Could not create graphics context!"
 	}
 
-function ContextCreationException:_init()
+function ContextCreationException:Init()
 end
 
 return ContextCreationException

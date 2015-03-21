@@ -1,13 +1,18 @@
 --[[
 	Carbon for Lua
-	Vector4 Object
+	#class Math.Vector4
+	#inherits Math.Vector<4>
 
-	Provides a 4-length vector with X, Y, Z, and W keys.
+	#description {
+		A 4-length vector.
+
+		The loose form of a @Vector4, `@loose<@Vector4>` is of the form `(x, y, z, w)`.
+	}
 ]]
 
 local Carbon = (...)
 
-local Vector4, except = Carbon.Math.VectorN:Generate({"X", "Y", "Z", "W"})
+local Vector4, except = Carbon.Math.Vector:Generate(4)
 
 if (not Vector4) then
 	if (except.Is[Carbon.Exceptions.CodeGenerationException]) then

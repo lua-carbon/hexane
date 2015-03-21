@@ -22,7 +22,7 @@ local TextureData = OOP:Class()
 	}
 
 -- TODO: use malloc/free instead
-function TextureData:_init(typeof, format, w, h)
+function TextureData:Init(typeof, format, w, h)
 	local size = w * h
 	self.__type = typeof
 	self.__data = ffi.cast(typeof .. "*", C.malloc(size * format_sizes[format] * ffi.sizeof(typeof)))

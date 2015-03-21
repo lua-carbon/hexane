@@ -1,14 +1,19 @@
 --[[
 	Carbon for Lua
-	RGBA Class
+	#class Math.ColorRGBA
+	#inherits Math.Color, Math.Vector<4>
 
-	Provides an RGB color class with alpha.
+	#description {
+		Provides an RGB color class with alpha.
+
+		The loose form of a @ColorRGBA, `@loose<@ColorRGBA>` is of the form `(r, g, b, a)`.
+	}
 ]]
 
 local Carbon = (...)
 
 local Color = Carbon.Math.Color
-local Color_RGBA, except = Carbon.Math.VectorN:Generate({"R", "G", "B", "A"})
+local Color_RGBA, except = Carbon.Math.Vector:Generate(4)
 
 if (not Color_RGBA) then
 	if (except.Is[Carbon.Exceptions.CodeGenerationException]) then

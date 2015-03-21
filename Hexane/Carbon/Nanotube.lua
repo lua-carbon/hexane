@@ -1,11 +1,13 @@
 --[[
 	Carbon for Lua
-	Nanotube Class
+	#class Nanotube
 
-	Funnels events and provides an event loop.
+	#description {
+		Funnels events and provides an event loop.
+	}
 ]]
 
-local Carbon = (...)
+local Carbon, self = ...
 local OOP = Carbon.OOP
 local Time = Carbon.Time
 local CopyBarrier = Carbon.CopyBarrier
@@ -21,7 +23,7 @@ local Nanotube = OOP:Class()
 		__events = {}
 	}
 
-function Nanotube:_init()
+function Nanotube:Init()
 	self.__time = Time.Get()
 end
 
@@ -174,5 +176,7 @@ end
 
 -- Singleton instance through a CopyBarrier
 Nanotube.Global = CopyBarrier:New(Nanotube:New())
+
+Carbon.Metadata:RegisterMethods(Nanotube, self)
 
 return Nanotube

@@ -1,6 +1,10 @@
 --[[
 	Carbon for Lua
-	Time Utilities
+	#class Time
+
+	#description {
+		Provides utilities for working with time.
+	}
 ]]
 
 local Carbon = (...)
@@ -21,6 +25,21 @@ if (not ok) then
 end
 
 -- Discover a timer and sleep function
+--[[
+	#method 1 {
+		public @void Time.Sleep(@unumber seconds)
+			required seconds: The number of seconds to sleep.
+
+		Sleeps using the system timer.
+		If no timer providers are available, will not do anything.
+	}
+
+	#method 0.9 {
+		public @unumber Time.Get()
+
+		Returns a benchmarking time using the highest precision internal timer.
+	}
+]]
 if (love and love.timer) then
 	Time.Sleep = love.timer.sleep
 	Time.Get = love.timer.getTime
@@ -63,8 +82,7 @@ elseif (ffi) then
 		]])
 
 		Time.Sleep = function(s)
-			local whole = math.floor(s)
-			local fract = s - whole
+			local whole, fract = math.modf(s)
 			ffi.C.sleep(whole)
 			ffi.C.usleep(fract * 1000000)
 		end
@@ -81,40 +99,68 @@ else
 	Time.Get = os.clock
 end
 
--- Convert weeks to seconds
+--[[#method {
+	public @unumber Time.Weeks(@unumber weeks)
+
+	Converts the given number of weeks to seconds.
+}]]
 function Time.Weeks(w)
 	return w * 604800
 end
 
--- Convert days to seconds
+--[[#method {
+	public @unumber Time.Days(@unumber days)
+
+	Converts the given number of days to seconds.
+}]]
 function Time.Days(d)
 	return d * 86400
 end
 
--- Convert hours to seconds
+--[[#method {
+	public @unumber Time.Hours(@unumber hours)
+
+	Converts the given number of hours to seconds.
+}]]
 function Time.Hours(h)
 	return h * 3600
 end
 
--- Convert minutes to seconds
+--[[#method {
+	public @unumber Time.Minutes(@unumber minutes)
+
+	Converts the given number of minutes to seconds.
+}]]
 function Time.Minutes(m)
 	return m * 60
 end
 
--- Convert seconds to seconds
--- This isn't very useful, is it?
+--[[#method {
+	public @unumber Time.Seconds(@unumber seconds)
+
+	Converts the given number of seconds to seconds.
+	Not very useful.
+}]]
 function Time.Seconds(s)
 	return s
 end
 
--- Convert milliseconds to seconds
-function Time.Milliseconds(s)
-	return s / 1000
+--[[#method {
+	public @unumber Time.Milliseconds(@unumber milliseconds)
+
+	Converts the given number of milliseconds to seconds.
+}]]
+function Time.Milliseconds(ms)
+	return ms / 1000
 end
 
--- Convert nanoseconds to seconds
-function Time.Nanoseconds(s)
-	return s / 1000000
+--[[#method {
+	public @unumber Time.Nanoseconds(@unumber nanoseconds)
+
+	Converts the given number of nanoseconds to seconds.
+}]]
+function Time.Nanoseconds(ns)
+	return ns / 1000000
 end
 
 return Time

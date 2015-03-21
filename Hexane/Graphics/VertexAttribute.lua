@@ -17,7 +17,7 @@ local types = {
 
 local VertexAttribute = OOP:Class()
 
-function VertexAttribute:_init(position, count, typeof, stride, size)
+function VertexAttribute:Init(position, count, typeof, stride, size)
 	self.__position = position
 	self.__count = count
 	self.__type = types[typeof]

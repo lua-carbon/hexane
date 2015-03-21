@@ -47,7 +47,7 @@ local Texture = OOP:Class()
 		__batching = false
 	}
 
-function Texture:_init()
+function Texture:Init()
 	local tex = ffi.new("GLuint[1]")
 	gl.GenTextures(1, tex)
 	self.__tex = tex

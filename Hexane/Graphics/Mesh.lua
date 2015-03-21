@@ -18,7 +18,7 @@ local types = {
 
 local Mesh = OOP:Class()
 
-function Mesh:_init(l_vertices, l_elements, attributes)
+function Mesh:Init(l_vertices, l_elements, attributes)
 	if (not Hexane.Graphics:IsInitialized()) then
 		return nil, GraphicsNotInitializedException:New()
 	end

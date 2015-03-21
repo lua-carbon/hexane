@@ -1,13 +1,18 @@
 --[[
 	Carbon for Lua
-	Vector2 Object
+	#class Math.Vector2
+	#inherits Math.Vector<2>
 
-	Provides a 2-length vector with X and Y keys.
+	#description {
+		A 2-length vector.
+
+		The loose form of a @Vector2, `@loose<@Vector2>` is of the form `(x, y)`.
+	}
 ]]
 
 local Carbon = (...)
 
-local Vector2, except = Carbon.Math.VectorN:Generate({"X", "Y"})
+local Vector2, except = Carbon.Math.Vector:Generate(2)
 
 if (not Vector2) then
 	if (except.Is[Carbon.Exceptions.CodeGenerationException]) then

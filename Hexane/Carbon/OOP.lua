@@ -1,6 +1,10 @@
 --[[
 	Carbon for Lua
-	Object Orientation System
+	#class OOP
+
+	#description {
+		Provides object orientation features for Carbon.
+	}
 ]]
 
 local Carbon = (...)
@@ -20,8 +24,6 @@ local OOP = {
 		InstancedMetatable = true,
 
 		-- Not inherited attributes
-		TemplateHandler = false,
-		TemplateRequired = false,
 		SparseInstances = false,
 		PooledInstantiation = false,
 		PoolSize = false,
@@ -33,11 +35,6 @@ local OOP = {
 
 -- Default attributes for classes and static classes
 local default_attributes = {
-	TemplateHandler = function(self, ...)
-		self.__template_arguments = List.ShallowCopy({...}, self.__template_arguments)
-
-		return self
-	end
 }
 
 local default_static_attributes = {
@@ -81,34 +78,33 @@ OOP.Attributes = {
 	Copy = {}
 }
 
---[[
-	void OOP:RegisterAttribute(string type, string name, function method)
-		type: The type of attribute (Class, PreInitialize, PostInitialize, or Copy).
-		name: The name of the attribute as a class would call it.
-		method: The class applicator. For function signatures, see below.
+--[[#method {
+	public void OOP:RegisterAttribute(@string type, @string name, function method)
+		required type: The type of attribute (Class, PreInitialize, PostInitialize, or Copy).
+		required name: The name of the attribute as a class would call it.
+		required method: The class applicator. For function signatures, see below.
 
 	Registers a new custom class attribute.
 
-	Class:
-		void function(class)
+	- Class: `@void function(class)`
 
 		Called immediately when the attribute is added to the class.
 
-	PreInitialize:
-		void function(class, instance)
+
+	- PreInitialize: `@void function(class, instance)`
 
 		Called after instance allocation but before the object's initializer is called.
 
-	PostInitialize:
-		void function(class, instance)
+
+	- PostInitialize: `@void function(class, instance)`
 
 		Called after the object is fully initialized.
 
-	Copy:
-		void function(original, copy)
+
+	- Copy: `@void function(original, copy)`
 
 		Called after the copied object has been allocated and filled.
-]]
+}]]
 function OOP:RegisterAttribute(type, name, method)
 	local typeset = self.Attributes[type]
 
@@ -132,13 +128,13 @@ function OOP:RegisterAttribute(type, name, method)
 	out[2] = method
 end
 
---[[
-	void OOP:SetAttributeInherited(string name, bool inherited)
-		name: The name of the attribute to define a value for.
-		inherited: Whether inheriting a class will also inherit this attribute.
+--[[#method {
+	public void OOP:SetAttributeInherited(@string name, @bool inherited)
+		required name: The name of the attribute to define a value for.
+		required inherited: Whether inheriting a class will also inherit this attribute.
 
 	Marks an attribute as inherited or not inherited explicitly.
-]]
+}]]
 function OOP:SetAttributeInherited(name, inherited)
 	self.__attribute_inheritance[name] = not not inherited
 end
@@ -172,13 +168,31 @@ OOP:RegisterAttribute("Class", "SparseInstances",
 )
 
 --[[
-	Body for both Class and StaticClass base classes.
+	#class OOP.BaseClass
 
-	__members: Holds user-defined class members.
-	__base_members: Holds base class members so they can be overridden effectively.
-	__metatable: Holds metatable to be applied to instances.
-	__attributes: Holds class attributes.
-	Is: The typecheck object for this class.
+	#description {
+		Body for both @OOP.Class and @OOP.StaticClass base classes.
+	}
+
+	#property public set Is {
+		The typecheck object for this class.
+	}
+
+	#property private dictionary __members {
+		Holds user-defined class members.
+	}
+
+	#property private dictionary __base_members {
+		Holds base class members so they can be overridden effectively.
+	}
+
+	#property private dictionary __metatable {
+		Holds metatable to be applied to instances.
+	}
+
+	#property private dictionary __attributes {
+		Holds class attributes.
+	}
 ]]
 OOP.BaseClass = {
 	__members = {},
@@ -194,50 +208,52 @@ OOP.BaseClass = {
 	Is = {}
 }
 
---[[
-	Class BaseClass:Inherits(...)
+--[[#method {
+	public self BaseClass:Inherits(...)
 
 	Inherits from classes, taking on their inheritable attributes, members, metatables, and type information.
-]]
+}]]
 function OOP.BaseClass:Inherits(...)
 	for i = 1, select("#", ...) do
 		local object = select(i, ...)
 
-		if (type(object) ~= "table" or not object.__members) then
+		if (type(object) ~= "table") then
 			error(("Carbon.OOP: Cannot inherit from object #%d, not a class: %s"):format(i, tostring(object)), 2)
 		end
 
-		Dictionary.DeepCopyMerge(object.__members, self.__members)
-		Dictionary.DeepCopyMerge(object.__metatable, self.__metatable)
-		Dictionary.ShallowMerge(object.Is, self.Is)
+		-- Is this an actual class, or just a collection of members?
+		if (object.__members and object.__metatable and object.Is and object.__attributes) then
+			Dictionary.DeepCopyMerge(object.__members, self.__members)
+			Dictionary.DeepCopyMerge(object.__metatable, self.__metatable)
+			Dictionary.ShallowMerge(object.Is, self.Is)
 
-		if (object.__template_arguments) then
-			self.__template_arguments = List.ShallowCopy(object.__template_arguments, self.__template_arguments)
-		end
-
-		for key, value in pairs(object.__attributes) do
-			if (OOP.__attribute_inheritance[key]) then
-				self.__attributes = Dictionary.DeepCopy(value)
+			for key, value in pairs(object.__attributes) do
+				if (OOP.__attribute_inheritance[key]) then
+					self.__attributes = Dictionary.DeepCopy(value)
+				end
 			end
-		end
 
-		for i, attribute in ipairs(OOP.Attributes.Class) do
-			if (object.__attributes[attribute[1]]) then
-				attribute[2](self)
+			for i, attribute in ipairs(OOP.Attributes.Class) do
+				if (object.__attributes[attribute[1]]) then
+					attribute[2](self)
+				end
 			end
+		else
+			-- This isn't really a class, but we can treat it like one!
+			Dictionary.DeepCopyMerge(object, self.__members)
 		end
 	end
 
 	return self
 end
 
---[[
-	Class BaseClass:Attributes(table attributes)
-		attributes: The attributes to give to the object.
+--[[#method {
+	public self BaseClass:Attributes(@dictionary attributes)
+		required attributes: The attributes to give to the object.
 
 	Adds attributes to the class. Overwrites existing attributes.
 	The attributes parameter is only shallow copied, keep this in mind.
-]]
+}]]
 function OOP.BaseClass:Attributes(attributes)
 	Dictionary.ShallowCopy(attributes, self.__attributes)
 
@@ -250,26 +266,26 @@ function OOP.BaseClass:Attributes(attributes)
 	return self
 end
 
---[[
-	Class BaseClass:Metatable(table metatable)
-		metatable: The metatable to give to instances of this class.
+--[[#method {
+	public self BaseClass:Metatable(@dictionary metatable)
+		required metatable: The metatable to give to instances of this class.
 
 	Adds metatables to the class. Overwrites existing metatable entries.
 	The metatable parameter is only shallow copied, keep this in mind.
-]]
+}]]
 function OOP.BaseClass:Metatable(metatable)
 	Dictionary.ShallowCopy(metatable, self.__metatable)
 
 	return self
 end
 
---[[
-	Class BaseClass:Metatable(table member)
-		member: The member to give to instances of this class.
+--[[#method {
+	public self BaseClass:Members(@dictionary members)
+		required members: The member to give to instances of this class.
 
 	Adds members to the class. Overwrites existing member entries.
 	The members parameter is only shallow copied, keep this in mind.
-]]
+}]]
 function OOP.BaseClass:Members(members)
 	Dictionary.ShallowCopy(members, self.__members)
 
@@ -277,42 +293,27 @@ function OOP.BaseClass:Members(members)
 end
 
 --[[
-	any? BaseClass:Template(...)
-		...: Arguments to the template handler
-
-	Specializes the class by passing arguments to the template handler.
+	#class OOP.Object
+	#inherits OOP.BaseClass
+	#description {
+		The base object for all instancable classes.
+	}
 ]]
-function OOP.BaseClass:Template(...)
-	if (self.__attributes.TemplateHandler) then
-		local sub = OOP:Class(self)
-
-		sub.__complete = true
-
-		return sub.__attributes.TemplateHandler(sub, ...)
-	end
-
-	return self
-end
-
--- The base object for all non-singleton objects
 OOP.Object = Dictionary.DeepCopy(OOP.BaseClass)
 	:Attributes(default_attributes)
 
 OOP.Object.Is[OOP.Object] = true
 
---[[
-	Object Class:PlacementNew(indexable target?, ...)
-		target: Where to place the instance, will be provided if not given.
+--[[#method 0.9 {
+	public Object Class:PlacementNew(@indexable? target, ...)
+		optional target: Where to place the instance, will be provided if not given.
+		optional ...: Arguments to pass to the constructor
 
 	Creates a new object and puts it into a given indexable object.
-]]
+}]]
 function OOP.Object:PlacementNew(instance, ...)
 	if (self.__attributes.Abstract) then
 		error("Cannot create instance of abstract class!", 2)
-	end
-
-	if (self.__attributes.TemplateRequired and not self.__complete) then
-		error("Cannot create instance of incomplete templated class!", 2)
 	end
 
 	if (not instance) then
@@ -324,13 +325,11 @@ function OOP.Object:PlacementNew(instance, ...)
 				Dictionary.ShallowCopy(self.__members, index)
 
 				if (not index.class) then
-					index.class = newproxy(true)
-					getmetatable(index.class).__index = self
+					index.class = self.__class_reference
 				end
 
 				if (not index.Is) then
-					index.Is = newproxy(true)
-					getmetatable(index.Is).__index = self.Is
+					index.Is = self.__is_reference
 				end
 
 				self.__ext_ffi_metatype = {
@@ -358,20 +357,8 @@ function OOP.Object:PlacementNew(instance, ...)
 
 	if (not self.__attributes.EXT_LJ_Struct) then
 		instance.self = instance.self or instance
-
-		if (not self.__class_reference) then
-			self.__class_reference = newproxy(true)
-			getmetatable(self.__class_reference).__index = self
-		end
-
-		instance.class = self.__class_reference
-
-		if (not self.__is_reference) then
-			self.__is_reference = newproxy(true)
-			getmetatable(self.__is_reference).__index = self.Is
-		end
-
-		instance.Is = self.__is_reference
+		instance.class = instance.class or self.__class_reference
+		instance.Is = instance.Is or self.__is_reference
 
 		-- InstanceIndirection attribute wraps the object in a userdata
 		-- This allows a __gc metamethod with Lua 5.1 and LuaJIT.
@@ -387,8 +374,8 @@ function OOP.Object:PlacementNew(instance, ...)
 		end
 	end
 
-	if (self.__members._init) then
-		local err, result = self.__members._init(instance, ...)
+	if (self.__members.Init) then
+		local err, result = self.__members.Init(instance, ...)
 
 		if (err == false) then
 			return err, result
@@ -404,20 +391,29 @@ function OOP.Object:PlacementNew(instance, ...)
 	return instance
 end
 
---[[
-	Object Class:New(...)
+--[[#method 1 {
+	public Object Class:New(...)
 
 	Creates a new object and passes parameters to its initializer.
-]]
+}]]
 function OOP.Object:New(...)
 	return self:PlacementNew(nil, ...)
 end
 
---[[
-	Object Object:Copy()
+--[[#method  0.85 {
+	public self Object:Init(...)
+
+	Initializes the object with the given parameters.
+}]]
+OOP.Object.__base_members.Init = function(self)
+	return self
+end
+
+--[[#method 0.8 {
+	public Object Object:Copy()
 
 	Copies the given object.
-]]
+}]]
 OOP.Object.__base_members.Copy = function(self)
 	local class = self.class
 	local target
@@ -449,22 +445,35 @@ OOP.Object.__base_members.Copy = function(self)
 	return copy
 end
 
--- StaticObject, the base class for all singleton classes.
+--[[
+	#class OOP.StaticObject
+	#description {
+		The base class for objects that cannot be instanced, but use OOP-like functionality like inheritance.
+	}
+]]
 OOP.StaticObject = Dictionary.DeepCopy(OOP.BaseClass)
 	:Attributes(default_static_attributes)
 
 OOP.StaticObject.Is[OOP.StaticObject] = true
 
---[[
-	Class OOP:Class()
+-- #class OOP
+--[[#method 1 {
+	public Class OOP:Class([Class based_on])
+		optional based_on: A class to make a direct copy of for the basis of this class.
 
 	Creates a new, empty class.
-]]
+}]]
 function OOP:Class(based_on)
 	based_on = based_on or self.Object
 	local class = Dictionary.DeepCopy(based_on)
 
 	class.Is[class] = true
+
+	class.__class_reference = newproxy(true)
+	getmetatable(class.__class_reference).__index = class
+
+	class.__is_reference = newproxy(true)
+	getmetatable(class.__is_reference).__index = class.Is
 
 	setmetatable(class, {
 		__newindex = class.__members,
@@ -475,12 +484,11 @@ function OOP:Class(based_on)
 	return class
 end
 
---[[
-	StaticClass OOP:StaticClass()
+--[[#method  0.9 {
+	public StaticClass OOP:StaticClass()
 
-	Creates a static (singleton) class.
-	Also works for abstract classes, see the alias below to OOP:AbstractClass()
-]]
+	Creates a static class, enabling it to inherit from other objects without having instantiation capability.
+}]]
 function OOP:StaticClass()
 	return OOP:Class(self.StaticObject)
 end

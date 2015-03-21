@@ -29,18 +29,19 @@ local Window = OOP:Class()
 		InstanceIndirection = true
 	}
 
-function Window:_init(info)
+function Window:Init(info)
 	info = info or WindowInfo:New()
 
 	local window, exception = info:CreateWindow()
 
-	if (not window) then
+	if (window == nil) then
 		return nil, exception
 	end
 
 	self.__info = info
 	self.__window = window
 
+	self:Use()
 	gl.ClearColor(0, 0, 0, 1)
 end
 

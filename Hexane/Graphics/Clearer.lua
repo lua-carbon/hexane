@@ -11,7 +11,7 @@ Hexane.Bindings.OpenGL:ImportAll()
 
 local Clearer = OOP:Class()
 
-function Clearer:_init(r, g, b, a)
+function Clearer:Init(r, g, b, a)
 	r = r or 0
 	g = g or 0
 	b = b or 0

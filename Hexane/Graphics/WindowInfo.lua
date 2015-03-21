@@ -45,7 +45,7 @@ local WindowInfo = OOP:Class()
 		ShareResourcesWith = nil
 	}
 
-function WindowInfo:_init()
+function WindowInfo:Init()
 end
 
 local function try_window(self, version)

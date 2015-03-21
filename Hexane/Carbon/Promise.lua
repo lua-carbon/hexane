@@ -1,6 +1,12 @@
 --[[
 	Carbon for Lua
-	Promises
+	#class Promise
+
+	#description {
+		Implements a model for asynchronous tasks via promises.
+
+		A type of `Promise<T>` is a Promise that returns the given type, `T`.
+	}
 ]]
 
 local Carbon = (...)
@@ -17,7 +23,7 @@ local Promise = OOP:Class()
 		__fail_chain = {}
 	}
 
-function Promise:_init(handler)
+function Promise:Init(handler)
 	if (handler) then
 		handler(self)
 	end

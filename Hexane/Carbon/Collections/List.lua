@@ -1,6 +1,18 @@
 --[[
 	Carbon for Lua
-	List Utilities
+	#class Collections.List
+	#inherits OOP.Object, Serializable
+	
+	#description {
+		Provides utilities for operating on Lists and List-like data.
+
+		The @List type Differs from the primtive @list type by adding methods to it.
+		It is possible to use these methods with a plain @list, just call them in a non-object oriented way:
+		```lua
+		List.Clear(list)
+		List.ShallowCopy(list)
+		```
+	}
 ]]
 
 local Carbon, self = ...
@@ -10,36 +22,52 @@ List.__object_metatable = {
 	__index = List
 }
 
---[[
-	List List:New(table data)
-		data: The data of the dictionary
+List.Is = {
+	[List] = true
+}
 
-	Turns the given object into a List.
+--[[#method 1 {
+	public @List List:New([@list data])
+		optional data: The data of the list. Empty if not given.
+
+	Turns the given object into a @List.
 	Allows method-style syntax.
-]]
+}]]
 function List:New(object)
 	return setmetatable(object or {}, self.__object_metatable)
 end
 
---[[
-	void List.Clear(List self)
-		self: The list to clear.
+function List:Serialize()
+	return nil, Carbon.Exceptions.NotImplementedException("List:Serialize")
+end
+
+function List.DeserializeInPlace(source)
+	return self.Deserialize(source, self)
+end
+
+function List.Deserialize(source, out)
+	return nil, Carbon.Exceptions.NotImplementedException("List:Deserialize")
+end
+
+--[[#method {
+	public @void List.Clear(@List self)
+		required self: The list to clear.
 
 	Clears a list of all list values.
-]]
+}]]
 function List.Clear(self)
 	for i = 1, #self do
 		self[i] = nil
 	end
 end
 
---[[
-	table List.ShallowCopy(List self, [List to])
-		self: The list to source data from
-		to: The list to copy into; an empty table if not given.
+--[[#method {
+	public @list List.ShallowCopy(@list self, [@list to])
+		required self: The list to source data from
+		optional to: The list to copy into; an empty table if not given.
 
 	Shallow copies data from one table into another and returns the result.
-]]
+}]]
 function List.ShallowCopy(self, to)
 	to = to or List:New({})
 
@@ -50,16 +78,18 @@ function List.ShallowCopy(self, to)
 	return to
 end
 
---[[
-	List List.DeepCopy(table self, [table to, table map, function copy_function, ...])
-		self: The list to source data from.
-		to: The list to copy into; an empty table if not given.
-		copy_function: The function to copy members with: defaults to this method.
-		map: A map projecting original values into copied values. Used internally.
+List.Copy = List.ShallowCopy
+
+--[[#method {
+	public @List List.DeepCopy(@list self, [@list to, @dictionary map, function copy_function, ...])
+		required self: The list to source data from.
+		optional to: The list to copy into; an empty table if not given.
+		internal map: A map projecting original values into copied values. Used internally.
+		optional copy_function: The function to copy members with: defaults to this method.
 
 	Performs a self-reference fixing deep copy from one list into another.
 	Handles self-references properly.
-]]
+}]]
 function List.DeepCopy(self, to, map, copy_function, ...)
 	to = to or List:New({})
 	copy_function = copy_function or List.DeepCopy
