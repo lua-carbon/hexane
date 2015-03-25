@@ -49,6 +49,10 @@ function Window:SetBlendMode(a, b)
 	gl.BlendFunc(blends[a], blends[b])
 end
 
+function Window:EnableDepthTest()
+	gl.Enable(GL.DEPTH_TEST)
+end
+
 function Window:EnableAlphaBlending()
 	gl.Enable(GL.BLEND)
 end

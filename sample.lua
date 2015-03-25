@@ -23,21 +23,29 @@ print(window:GetContextVersionString())
 
 -- This could be a little friendlier
 window:EnableAlphaBlending()
+window:EnableDepthTest()
 window:SetBlendMode("src_alpha", "one_minus_src_alpha")
 
 -- Create a 'Clearer' which manages clearing the buffer between frames
 local clearer = Hexane.Graphics.Clearer:New()
-
 
 local w, h = window:GetSize()
 local ratio = h / w
 
 -- Create a mesh given a list of vertices (VBO) and elements (EBO)
 local vertices = {
-	-0.5, 0.5, 1, 0, 0, 0, 0,
-	0.5, 0.5, 0, 1, 0, 1, 0,
-	0.5, -0.5, 0, 0, 1, 1, 1,
-	-0.5, -0.5, 1, 1, 1, 0, 1,
+	-0.5, 0.5, 0.0,
+		1, 0, 0,
+		0, 0,
+	0.5, 0.5, 0.0,
+		0, 1, 0,
+		1, 0,
+	0.5, -0.5, 0.0,
+		0, 0, 1,
+		1, 1,
+	-0.5, -0.5, 0.0,
+		1, 1, 1,
+		0, 1
 }
 
 local elements = {
@@ -51,7 +59,7 @@ local vertex_source = [[
 
 uniform mat4 transform;
 
-in vec2 position;
+in vec3 position;
 in vec3 color;
 in vec2 texcoord;
 
@@ -64,7 +72,7 @@ vec2 ratio = vec2(0.5625, 1);
 void main() {
 	Color = color;
 	Texcoord = texcoord;
-	gl_Position = transform * vec4(position, 0.0, 1.0) * vec4(ratio, 0.0, 1.0);
+	gl_Position = transform * vec4(position, 1.0) * vec4(ratio, 1.0, 1.0);
 }
 ]]
 
@@ -108,9 +116,9 @@ shader:AddUniform("tex", "1i")
 shader:SetUniform("tex", 0)
 
 -- Create some attributes to define our mesh data
-local position_attribute = Hexane.Graphics.VertexAttribute:New(0, 2, "float", 7, 0)
-local color_attribute = Hexane.Graphics.VertexAttribute:New(1, 3, "float", 7, 2)
-local texcoord_attrib = Hexane.Graphics.VertexAttribute:New(2, 2, "float", 7, 5)
+local position_attribute = Hexane.Graphics.VertexAttribute:New(0, 3, "float", 8, 0)
+local color_attribute = Hexane.Graphics.VertexAttribute:New(1, 3, "float", 8, 3)
+local texcoord_attrib = Hexane.Graphics.VertexAttribute:New(2, 2, "float", 8, 6)
 
 -- Group these attributes!
 local attributes = {
@@ -120,8 +128,8 @@ local attributes = {
 }
 
 -- Create meshes with the given vertices, elements, and attributes
-local mesh = Hexane.Graphics.Mesh:New(vertices, elements, attributes)
-local mesh2 = Hexane.Graphics.Mesh:New(vertices, elements, attributes)
+local mesh = Hexane.Graphics.Mesh:New(vertices, elements, attributes, 6)
+local mesh2 = Hexane.Graphics.Mesh:New(vertices, elements, attributes, 6)
 
 -- Load an image using the plain STB interface
 local stbi = Hexane.Bindings.STB.Image
@@ -164,7 +172,7 @@ tube:On("Draw", function(dt)
 
 	-- This will hopefully be a lot nicer when the Matrix library fills out in Carbon.
 	local c_rotation = Carbon.Math.Matrix4x4:RotationZ(x_theta)
-		:MultiplyMatrixInPlace(Carbon.Math.Matrix4x4:RotationY(y_theta))
+		:MultiplyMatrixInPlace(Carbon.Math.Matrix4x4:RotationX(y_theta))
 	local rotation = c_rotation:ToNative()
 
 	local identity = Hexane.Carbon.Math.Matrix4x4:Identity():ToNative()
