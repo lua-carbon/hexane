@@ -1,4 +1,4 @@
--- Sample: Make a Window, draw a couple meshes, one rotated with the mouse.
+-- Sample: Make a Window, draw a cube rotated with the mouse.
 
 local ffi = require("ffi")
 local Hexane = require("Hexane")
@@ -22,7 +22,6 @@ end
 
 print(window:GetContextVersionString())
 
---window:EnableAlphaBlending()
 window:EnableDepthTest()
 
 window:SetDepthFunction("less")
@@ -35,7 +34,7 @@ clearer:SetColor(100/255, 149/255, 237/255)
 local w, h = window:GetSize()
 local ratio = h / w
 
--- Create a mesh given a list of vertices (VBO) and elements (EBO)
+-- Create a mesh given a list of vertices
 local vertices = {
 	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
 	 0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
@@ -136,10 +135,12 @@ shader:Use()
 -- Bind our pixel data out location
 shader:BindFragDataLocation(0, "outColor")
 
--- Add a rect_position uniform for positioning our rectangles
+-- Add uniforms for matrix MVP transforms
 shader:AddUniform("transform_model", "Matrix4fv")
 shader:AddUniform("transform_view", "Matrix4fv")
 shader:AddUniform("transform_projection", "Matrix4fv")
+
+-- Add a texture uniform
 shader:AddUniform("tex", "1i")
 shader:SetUniform("tex", 0)
 
@@ -155,8 +156,8 @@ local attributes = {
 	texcoord_attrib
 }
 
--- Create meshes with the given vertices, elements, and attributes
-local mesh = Hexane.Graphics.Mesh:New(vertices, nil, attributes, 6)
+-- Create cube mesh with the given vertices, elements, and attributes
+local mesh = Hexane.Graphics.Mesh:New(vertices, nil, attributes)
 
 -- Load an image using the plain STB interface
 local stbi = Hexane.Bindings.STB.Image
@@ -197,11 +198,8 @@ tube:On("Draw", function(dt)
 
 	local y_zoom = (2 * y / h - 1)
 
-	-- This will hopefully be a lot nicer when the Matrix library fills out in Carbon.
 	local rotation = Carbon.Math.Matrix4x4:Rotation(y_theta, x_theta, 0):ToNative()
-
 	local identity = Hexane.Carbon.Math.Matrix4x4:NewIdentity():ToNative()
-
 	local projection = Hexane.Carbon.Math.Matrix4x4:Scaling(h / w, 1, 1):ToNative()
 
 	local nope = 0
