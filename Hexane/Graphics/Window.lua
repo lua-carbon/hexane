@@ -24,6 +24,17 @@ local blends = {
 	-- todo: the rest of these
 }
 
+local depths = {
+	["never"] = GL.NEVER,
+	["less"] = GL.LESS,
+	["equal"] = GL.EQUAL,
+	["lequal"] = GL.LEQUAL,
+	["greater"] = GL.GREATER,
+	["notequal"] = GL.NOTEQUAL,
+	["gequal"] = GL.GEQUAL,
+	["always"] = GL.ALWAYS
+}
+
 local Window = OOP:Class()
 	:Attributes {
 		InstanceIndirection = true
@@ -47,6 +58,10 @@ end
 
 function Window:SetBlendMode(a, b)
 	gl.BlendFunc(blends[a], blends[b])
+end
+
+function Window:SetDepthFunction(name)
+	gl.DepthFunc(depths[name])
 end
 
 function Window:EnableDepthTest()

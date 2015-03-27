@@ -42,7 +42,8 @@ end
 
 function Clearer:Draw()
 	gl.ClearColor(self.__color[1], self.__color[2], self.__color[3], self.__color[4])
-	gl.Clear(self.__mask)
+	--gl.Clear(self.__mask)
+	gl.Clear(bit.bor(GL.COLOR_BUFFER_BIT, GL.DEPTH_BUFFER_BIT))
 end
 
 return Clearer

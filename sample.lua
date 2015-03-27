@@ -11,6 +11,7 @@ local info = Hexane.Graphics.WindowInfo:New()
 info.Title = "Hexane: Sample #1"
 info.Width = 1280
 info.Height = 720
+info.DepthBits = 24
 
 -- Creating a new window automatically sets it as the current window
 local window, exception = Hexane.Graphics.Window:New(info)
@@ -21,43 +22,71 @@ end
 
 print(window:GetContextVersionString())
 
--- This could be a little friendlier
-window:EnableAlphaBlending()
+--window:EnableAlphaBlending()
 window:EnableDepthTest()
+
+window:SetDepthFunction("less")
 window:SetBlendMode("src_alpha", "one_minus_src_alpha")
 
 -- Create a 'Clearer' which manages clearing the buffer between frames
 local clearer = Hexane.Graphics.Clearer:New()
+clearer:SetColor(100/255, 149/255, 237/255)
 
 local w, h = window:GetSize()
 local ratio = h / w
 
 -- Create a mesh given a list of vertices (VBO) and elements (EBO)
 local vertices = {
-	-0.5, 0.5, 0.0,
-		1, 0, 0,
-		0, 0,
-	0.5, 0.5, 0.0,
-		0, 1, 0,
-		1, 0,
-	0.5, -0.5, 0.0,
-		0, 0, 1,
-		1, 1,
-	-0.5, -0.5, 0.0,
-		1, 1, 1,
-		0, 1
-}
+	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+	 0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	 0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	 0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	-0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
 
-local elements = {
-	0, 1, 2,
-	2, 3, 0
+	-0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+	 0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	 0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	 0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	-0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	-0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+
+	-0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	-0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	-0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+	-0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+
+	 0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	 0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	 0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	 0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	 0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+	 0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+
+	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	 0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	 0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	 0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	-0.5, -0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+
+	-0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
+	 0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 1.0, 1.0,
+	 0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	 0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 1.0, 0.0,
+	-0.5,  0.5,  0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
+	-0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0
 }
 
 -- Shader sources!
 local vertex_source = [[
 #version 150
 
-uniform mat4 transform;
+uniform mat4 transform_model;
+uniform mat4 transform_view;
+uniform mat4 transform_projection;
 
 in vec3 position;
 in vec3 color;
@@ -66,13 +95,10 @@ in vec2 texcoord;
 out vec3 Color;
 out vec2 Texcoord;
 
-// 16:9 aspect ratio transformation
-vec2 ratio = vec2(0.5625, 1);
-
 void main() {
 	Color = color;
 	Texcoord = texcoord;
-	gl_Position = transform * vec4(position, 1.0) * vec4(ratio, 1.0, 1.0);
+	gl_Position = transform_projection * transform_view * transform_model * vec4(position, 1.0);
 }
 ]]
 
@@ -111,7 +137,9 @@ shader:Use()
 shader:BindFragDataLocation(0, "outColor")
 
 -- Add a rect_position uniform for positioning our rectangles
-shader:AddUniform("transform", "Matrix4fv")
+shader:AddUniform("transform_model", "Matrix4fv")
+shader:AddUniform("transform_view", "Matrix4fv")
+shader:AddUniform("transform_projection", "Matrix4fv")
 shader:AddUniform("tex", "1i")
 shader:SetUniform("tex", 0)
 
@@ -128,8 +156,7 @@ local attributes = {
 }
 
 -- Create meshes with the given vertices, elements, and attributes
-local mesh = Hexane.Graphics.Mesh:New(vertices, elements, attributes, 6)
-local mesh2 = Hexane.Graphics.Mesh:New(vertices, elements, attributes, 6)
+local mesh = Hexane.Graphics.Mesh:New(vertices, nil, attributes, 6)
 
 -- Load an image using the plain STB interface
 local stbi = Hexane.Bindings.STB.Image
@@ -158,8 +185,6 @@ local ot = Time:Get()
 local t = Time:Get()
 local dt = t - ot
 
-Hexane.Bindings.OpenGL:ImportAll()
-
 -- Tell the tube what to do on draw
 tube:On("Draw", function(dt)
 	clearer:Draw()
@@ -170,17 +195,20 @@ tube:On("Draw", function(dt)
 	local x_theta = math.pi * (2 * x / w - 1)
 	local y_theta = math.pi * (2 * y / h - 1)
 
+	local y_zoom = (2 * y / h - 1)
+
 	-- This will hopefully be a lot nicer when the Matrix library fills out in Carbon.
-	local c_rotation = Carbon.Math.Matrix4x4:RotationZ(x_theta)
-		:MultiplyMatrixInPlace(Carbon.Math.Matrix4x4:RotationX(y_theta))
-	local rotation = c_rotation:ToNative()
+	local rotation = Carbon.Math.Matrix4x4:Rotation(y_theta, x_theta, 0):ToNative()
 
-	local identity = Hexane.Carbon.Math.Matrix4x4:Identity():ToNative()
-	shader:SetUniform("transform", 1, GL.FALSE, identity)
+	local identity = Hexane.Carbon.Math.Matrix4x4:NewIdentity():ToNative()
+
+	local projection = Hexane.Carbon.Math.Matrix4x4:Scaling(h / w, 1, 1):ToNative()
+
+	local nope = 0
+	shader:SetUniform("transform_view", 1, nope, identity)
+	shader:SetUniform("transform_projection", 1, nope, projection)
+	shader:SetUniform("transform_model", 1, nope, rotation)
 	mesh:Draw()
-
-	shader:SetUniform("transform", 1, GL.FALSE, rotation)
-	mesh2:Draw()
 end)
 
 -- Tell the tube what to do every step
