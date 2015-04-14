@@ -203,7 +203,7 @@ tube:On("Draw", function(dt)
 	local view = Matrix4x4:NewIdentity()
 	--Perspective seems to screw everything up!
 	--local projection = Matrix4x4:NewPerspective(math.rad(40), w / h, -1, 1)
-	local projection = Matrix4x4:NewOrthographic(-w / h, w / h, -1, 1, -1, 1)
+	local projection = Matrix4x4:NewOrthographic(-w / h, w / h, -1, 1, -2, 2)
 
 	local nope = 0
 	shader:SetUniform("transform_view", 1, nope, view:GetNative())
