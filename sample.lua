@@ -3,8 +3,11 @@
 local ffi = require("ffi")
 local Hexane = require("Hexane")
 local Carbon = Hexane.Carbon
+
 local Time = Carbon.Time
 local Nanotube = Carbon.Nanotube
+local Vector3 = Carbon.Math.Vector3
+local Matrix4x4 = Carbon.Math.Matrix4x4
 
 -- Create an object with information about the window we'll be making.
 local info = Hexane.Graphics.WindowInfo:New()
@@ -196,16 +199,16 @@ tube:On("Draw", function(dt)
 	local x_theta = math.pi * (2 * x / w - 1)
 	local y_theta = math.pi * (2 * y / h - 1)
 
-	local y_zoom = (2 * y / h - 1)
-
-	local rotation = Carbon.Math.Matrix4x4:Rotation(y_theta, x_theta, 0):ToNative()
-	local identity = Hexane.Carbon.Math.Matrix4x4:NewIdentity():ToNative()
-	local projection = Hexane.Carbon.Math.Matrix4x4:Scaling(h / w, 1, 1):ToNative()
+	local model = Matrix4x4:NewIdentity():Rotate(x_theta, y_theta, 0)
+	local view = Matrix4x4:NewIdentity()
+	--Perspective seems to screw everything up!
+	--local projection = Matrix4x4:NewPerspective(math.rad(40), w / h, -1, 1)
+	local projection = Matrix4x4:NewOrthographic(-w / h, w / h, -1, 1, -1, 1)
 
 	local nope = 0
-	shader:SetUniform("transform_view", 1, nope, identity)
-	shader:SetUniform("transform_projection", 1, nope, projection)
-	shader:SetUniform("transform_model", 1, nope, rotation)
+	shader:SetUniform("transform_view", 1, nope, view:GetNative())
+	shader:SetUniform("transform_projection", 1, nope, projection:GetNative())
+	shader:SetUniform("transform_model", 1, nope, model:GetNative())
 	mesh:Draw()
 end)
 
