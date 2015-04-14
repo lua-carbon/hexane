@@ -21,6 +21,40 @@ local TemplateEngine = Carbon.TemplateEngine
 
 local loadstring = loadstring or load
 
+local SIMPLE_LOOSE_BINARY_OPERATOR = function(symbol)
+	return (([[
+		return function(self, {%= ARGS_STRING %}, out)
+			return self.class:PlacementNew(out,
+				{% for i = 1, LENGTH do
+					_(("self[%d] {symbol} %s"):format(
+						i, ARGS[i]
+					))
+					
+					if (i < LENGTH) then
+						_(", ")
+					end
+				end %}
+			)
+		end
+	]]):gsub("{symbol}", symbol))
+end
+
+local SIMPLE_BINARY_OPERATOR = function(symbol)
+	return (([[
+		return function(self, other, out)
+			return self.class:PlacementNew(out,
+				{% for i = 1, LENGTH do
+					_(("self[%d] {symbol} other[%d]"):format(i, i))
+
+					if (i < LENGTH) then
+						_(", ")
+					end
+				end %}
+			)
+		end
+	]]):gsub("{symbol}", symbol))
+end
+
 local Vector = {
 	Engine = TemplateEngine:New(),
 	__cache = {},
@@ -93,31 +127,82 @@ local Vector = {
 			Normalizes the @Vector<N> object, optionally outputting the data to an existing @Vector<N>.
 		}]]
 		Normalize = [[
+			local abs = math.abs
+
 			return function(self, out)
 				out = out or self.class:New()
 
-				local length = self:Length()
+				local square_length = self:LengthSquared()
 
-				if (length == 0) then
-					length = 1 / {%= PARAMETERS.NormalizedLength %}
+				if (square_length == 0) then
+					square_length = 1 / {%= PARAMETERS.NormalizedLength^2 %}
 				else
 					{% if (PARAMETERS.NormalizedLength ~= 1) then %}					
-						length = length / {%= PARAMETERS.NormalizedLength %}
+						square_length = square_length / {%= PARAMETERS.NormalizedLength^2 %}
 					{% end %}
 				end
 
-				{% for i = 1, LENGTH do
-					_(("out[%d] = %g * self[%d] / length;"):format(
-						i, PARAMETERS.NormalizedLength, i
-					))
-				end %}
+				-- First-order Padé approximation for unit-ish vectors
+				if (abs(1 - square_length) < 2.107342e-8) then
+					{% for i = 1, LENGTH do
+						_(("out[%d] = self[%d] * 2 / (1 + square_length)"):format(i, i))
+					end %}
+				else
+					local length = math.sqrt(square_length)
+					{% for i = 1, LENGTH do
+						_(("out[%d] = %g * self[%d] / length;"):format(
+							i, PARAMETERS.NormalizedLength, i
+						))
+					end %}
+				end
 
 				return out
 			end
 		]],
 
 		--[[#method {
-			public @tuple<N, unumber> Vector<N>:GetComponents()
+			object public @loose<Vector> Vector:LooseScale(@number scalar)
+				required scalar: The value to scale by.
+
+			Scales the @Vector and returns it in @loose form.
+		}]]
+		LooseScale = [[
+			return function(self, scalar)
+				return
+				{% for i = 1, LENGTH do
+					_(("self[%d] * scalar"):format(i))
+
+					if (i < LENGTH) then
+						_(",")
+					end
+				end %}
+			end
+		]],
+
+		--[[#method {
+			object public @Vector Vector:Scale(@number scalar, [@Vector out])
+				required scalar: The value to scale by.
+				optional out: Where to put the resulting data.
+
+			Scales the @Vector, optionally outputting into an existing @Vector.
+		}]]
+		Scale = function(self, scalar, out)
+			return self:PlacementNew(out, self:LooseScale(scalar))
+		end,
+
+		--[[#method {
+			object public @Vector Vector:Scale!(@number scalar)
+			-alias: object public @Vector Vector:ScaleInPlace(@number scalar)
+				required scalar: The value to scale by.
+
+			Scales the @Vector in place.
+		}]]
+		ScaleInPlace = function(self, scalar)
+			return self:Scale(self, scalar, self)
+		end,
+
+		--[[#method {
+			object public @tuple<N, unumber> Vector<N>:GetComponents()
 
 			Returns the individual components of the @Vector<N> in order. Much faster than `unpack`.
 		}]]
@@ -131,6 +216,25 @@ local Vector = {
 						_(",")
 					end
 				end %}
+			end
+		]],
+
+		--[[#method {
+			object public @number Vector<N>:DotMultiply(@Vector<N> other)
+				required other: The @Vector to multiply with.
+
+			Performs a dot product between two vectors.
+		}]]
+		DotMultiply = [[
+			return function(self, other)
+				return
+					{% for i = 1, LENGTH do
+						_(("self[%d] * (other[%d] or 0)"):format(i, i))
+
+						if (i < LENGTH) then
+							_(" + ")
+						end
+					end %}
 			end
 		]],
 
@@ -148,7 +252,13 @@ local Vector = {
 
 		PostMultiplyMatrix = function(self, other, out)
 			return other:MultiplyVector(self, out)
-		end
+		end,
+
+		AddLooseVector = SIMPLE_LOOSE_BINARY_OPERATOR("+"),
+		AddVector = SIMPLE_BINARY_OPERATOR("+"),
+		
+		SubtractLooseVector = SIMPLE_LOOSE_BINARY_OPERATOR("-"),
+		SubtractVector = SIMPLE_BINARY_OPERATOR("-")
 	},
 	__metatable = {
 		-- String conversion:

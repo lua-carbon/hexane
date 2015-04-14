@@ -22,4 +22,19 @@ if (not Vector3) then
 	Carbon.Error(except)
 end
 
+--[[#method {
+	object public @Vector3 Vector3:CrossMultiply(@Vector3 other, [@Vector3 out])
+		required other: The Vector3 to find the cross product with.
+		optional out: Where to put the resulting data.
+
+	Calculates the cross product of two vectors, optionally putting the data into an existing @Vector3.
+}]]
+function Vector3:CrossMultiply(other, out)
+	return self.class:PlacementNew(out,
+		self[2] * other[3] - self[3] * other[2],
+		self[3] * other[1] - self[1] * other[3],
+		self[1] * other[2] - self[2] * other[1]
+	)
+end
+
 return Vector3
