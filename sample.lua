@@ -199,7 +199,7 @@ tube:On("Draw", function(dt)
 	local x_theta = math.pi * (2 * x / w - 1)
 	local y_theta = math.pi * (2 * y / h - 1)
 
-	local model = Matrix4x4:NewIdentity():Rotate(x_theta, y_theta, 0)
+	local model = Matrix4x4:NewIdentity():Rotate(x_theta, 0, y_theta)
 	local view = Matrix4x4:NewIdentity()
 	--Perspective seems to screw everything up!
 	--local projection = Matrix4x4:NewPerspective(math.rad(40), w / h, -1, 1)
