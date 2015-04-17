@@ -12,8 +12,6 @@ local ffi = require("ffi")
 
 Hexane.Bindings.OpenGL:ImportAll()
 
-
-
 local types = {
 	float = GL.FLOAT
 }
@@ -42,12 +40,24 @@ function ShaderProgram:AddUniform(name, suffix)
 	self.__uniforms[name] = {suffix, gl.GetUniformLocation(self.Program, name)}
 end
 
+function ShaderProgram:SetMatrixUniform(name, matrix, transpose)
+	local uniform = self.__uniforms[name]
+
+	if (uniform) then
+		local suffix = uniform[1]
+		local location = uniform[2]
+
+		gl["Uniform" .. suffix](location, 1, (transpose and 1 or 0), matrix)
+	end
+end
+
 function ShaderProgram:SetUniform(name, ...)
 	local uniform = self.__uniforms[name]
 
 	if (uniform) then
 		local suffix = uniform[1]
 		local location = uniform[2]
+
 		gl["Uniform" .. suffix](location, ...)
 	end
 end

@@ -1,6 +1,6 @@
 --[[
 	Hexane for LuaJIT
-	WindowInfo
+	ContextInfo
 ]]
 
 local Hexane = (...)
@@ -16,7 +16,7 @@ local profiles = {
 	Compatibility = GLFW.OPENGL_COMPAT_PROFILE
 }
 
-local WindowInfo = OOP:Class()
+local ContextInfo = OOP:Class()
 	:Members {
 		Debug = false,
 		Resizable = false,
@@ -45,10 +45,10 @@ local WindowInfo = OOP:Class()
 		ShareResourcesWith = nil
 	}
 
-function WindowInfo:Init()
+function ContextInfo:Init()
 end
 
-local function try_window(self, version)
+local function try_context(self, version)
 	local version_num, profile
 	if (type(version) == "table") then
 		version_num = version[1]
@@ -60,7 +60,7 @@ local function try_window(self, version)
 
 	local glfw_profile = profiles[profile]
 	if (not glfw_profile) then
-		error("Cannot apply WindowInfo: invalid profile '" .. tostring(profile) .. "'", 2)
+		error("Cannot apply ContextInfo: invalid profile '" .. tostring(profile) .. "'", 2)
 	end
 
 	local major, minor = math.modf(version_num)
@@ -77,7 +77,7 @@ local function try_window(self, version)
 	end
 end
 
-function WindowInfo:CreateWindow()
+function ContextInfo:CreateContext()
 	Graphics:Initialize()
 
 	GLFW.WindowHint(GLFW.OPENGL_FORWARD_COMPAT, self.ForwardCompatible and GL.TRUE or GL.FALSE)
@@ -85,26 +85,26 @@ function WindowInfo:CreateWindow()
 	GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT, self.Debug and GL.TRUE or GL.FALSE)
 	GLFW.WindowHint(GLFW.DEPTH_BITS, self.DepthBits)
 
-	local window
+	local context
 	if (self.ContextVersion) then
-		window = try_window(self, self.ContextVersion)
+		context = try_context(self, self.ContextVersion)
 	end
 
-	if (not window and self.ContextVersions) then
+	if (not context and self.ContextVersions) then
 		for i = 1, #self.ContextVersions do
-			window, version = try_window(self, self.ContextVersions[i])
+			context, version = try_context(self, self.ContextVersions[i])
 
-			if (window ~= nil) then
+			if (context ~= nil) then
 				break
 			end
 		end
 	end
 
-	if (window == nil) then
+	if (context == nil) then
 		return nil, Hexane.Exceptions.ContextCreationException:New()
 	end
 
-	GLFW.MakeContextCurrent(window)
+	GLFW.MakeContextCurrent(context)
 
 	if (self.VSync) then
 		GLFW.SwapInterval(1)
@@ -112,7 +112,7 @@ function WindowInfo:CreateWindow()
 		GLFW.SwapInterval(0)
 	end
 
-	return window
+	return context
 end
 
-return WindowInfo
+return ContextInfo

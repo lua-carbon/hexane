@@ -6,7 +6,7 @@
 local Hexane = (...)
 local Carbon = Hexane.Carbon
 local OOP = Carbon.OOP
-local WindowInfo = Hexane.Graphics.WindowInfo
+local ContextInfo = Hexane.Graphics.ContextInfo
 local GLFW = Hexane.Bindings.GLFW
 Hexane.Bindings.OpenGL:ImportAll()
 
@@ -35,25 +35,43 @@ local depths = {
 	["always"] = GL.ALWAYS
 }
 
+local features = {
+	["depth"] = GL.DEPTH_TEST,
+	["blending"] = GL.BLEND
+}
+
 local Window = OOP:Class()
 	:Attributes {
 		InstanceIndirection = true
 	}
 
 function Window:Init(info)
-	info = info or WindowInfo:New()
+	info = info or ContextInfo:New()
 
-	local window, exception = info:CreateWindow()
+	local context, exception = info:CreateContext()
 
-	if (window == nil) then
+	if (context == nil) then
 		return nil, exception
 	end
 
 	self.__info = info
-	self.__window = window
+	self.__context = context
 
 	self:Use()
-	gl.ClearColor(0, 0, 0, 1)
+end
+
+function Window:SetTube(tube)
+	self.__tube = tube
+end
+
+function Window:GetTube()
+	return self.__tube
+end
+
+function Window:Fire(name, ...)
+	if (self.__tube) then
+		self.__tube:Fire(name, ...)
+	end
 end
 
 function Window:SetBlendMode(a, b)
@@ -64,42 +82,36 @@ function Window:SetDepthFunction(name)
 	gl.DepthFunc(depths[name])
 end
 
-function Window:EnableDepthTest()
-	gl.Enable(GL.DEPTH_TEST)
+function Window:EnableFeature(feature)
+	gl.Enable(features[feature])
 end
 
-function Window:EnableAlphaBlending()
-	gl.Enable(GL.BLEND)
+function Window:DisableFeature(feature)
+	gl.Disable(features[feature])
 end
 
 function Window:GetSize()
 	local size = ffi.new("int[2]")
-	GLFW.GetWindowSize(self.__window, size, size + 1)
+	GLFW.GetWindowSize(self.__context, size, size + 1)
 	return size[0], size[1]
 end
 
 function Window:SetSize(w, h)
-	GLFW.SetWindowSize(self.__window, w, h)
+	GLFW.SetWindowSize(self.__context, w, h)
 end
 
 function Window:GetPosition()
 	local pos = ffi.new("int[2]")
-	GLFW.GetWindowPos(self.__window, pos, pos + 1)
+	GLFW.GetWindowPos(self.__context, pos, pos + 1)
 	return pos[0], pos[1]
 end
 
 function Window:SetPosition(x, y)
-	GLFW.SetWindowPos(self.__window, x, y)
-end
-
-function Window:GetMousePosition()
-	local pos = ffi.new("double[2]")
-	GLFW.GetCursorPos(self.__window, pos, pos + 1)
-	return pos[0], pos[1]
+	GLFW.SetWindowPos(self.__context, x, y)
 end
 
 function Window:GetNativeHandle()
-	return self.__window
+	return self.__context
 end
 
 function Window:GetContextVersionString()
@@ -107,25 +119,41 @@ function Window:GetContextVersionString()
 end
 
 function Window:GetContextVersion()
-	local major = GLFW.GetWindowAttrib(self.__window, GLFW.CONTEXT_VERSION_MAJOR)
-	local minor = GLFW.GetWindowAttrib(self.__window, GLFW.CONTEXT_VERSION_MINOR)
-	local revision = GLFW.GetWindowAttrib(self.__window, GLFW.CONTEXT_REVISION)
-	local glfw_profile = GLFW.GetWindowAttrib(self.__window, GLFW.OPENGL_PROFILE)
+	local major = GLFW.GetWindowAttrib(self.__context, GLFW.CONTEXT_VERSION_MAJOR)
+	local minor = GLFW.GetWindowAttrib(self.__context, GLFW.CONTEXT_VERSION_MINOR)
+	local revision = GLFW.GetWindowAttrib(self.__context, GLFW.CONTEXT_REVISION)
+	local glfw_profile = GLFW.GetWindowAttrib(self.__context, GLFW.OPENGL_PROFILE)
 	local profile = inverse_profiles[tonumber(glfw_profile)]
 
 	return major, minor, revision, profile
 end
 
 function Window:ShouldClose()
-	return (GLFW.WindowShouldClose(self.__window) ~= 0)
+	return (GLFW.WindowShouldClose(self.__context) ~= 0)
 end
 
 function Window:SwapBuffers()
-	GLFW.SwapBuffers(self.__window)
+	GLFW.SwapBuffers(self.__context)
 end
 
 function Window:PollEvents()
 	GLFW.PollEvents()
+end
+
+function Window:WaitEvents()
+	GLFW.WaitEvents()
+end
+
+function Window:PostEmptyEvent()
+	GLFW.PostEmptyEvent()
+end
+
+function Window:GetClipboardString()
+	return ffi.string(GLFW.GetClipboardString(self.__context))
+end
+
+function Window:SetClipboardString(body)
+	GLFW.SetClipboardString(self.__context, body)
 end
 
 function Window:SetVSync(vsync)
@@ -137,7 +165,7 @@ function Window:SetVSync(vsync)
 end
 
 function Window:Use()
-	GLFW.MakeContextCurrent(self.__window)
+	GLFW.MakeContextCurrent(self.__context)
 end
 
 function Window:Copy()
@@ -145,8 +173,8 @@ function Window:Copy()
 end
 
 function Window:Destroy()
-	if (self.__window) then
-		GLFW.DestroyWindow(self.__window)
+	if (self.__context) then
+		GLFW.DestroyWindow(self.__context)
 	end
 end
 

@@ -10,7 +10,7 @@ local Vector3 = Carbon.Math.Vector3
 local Matrix4x4 = Carbon.Math.Matrix4x4
 
 -- Create an object with information about the window we'll be making.
-local info = Hexane.Graphics.WindowInfo:New()
+local info = Hexane.Graphics.ContextInfo:New()
 info.Title = "Hexane: Sample #1"
 info.Width = 1280
 info.Height = 720
@@ -25,10 +25,12 @@ end
 
 print(window:GetContextVersionString())
 
-window:EnableDepthTest()
+window:EnableFeature("depth")
 
 window:SetDepthFunction("less")
 window:SetBlendMode("src_alpha", "one_minus_src_alpha")
+
+Hexane.Input.MouseContext:New(window)
 
 -- Create a 'Clearer' which manages clearing the buffer between frames
 local clearer = Hexane.Graphics.Clearer:New()
@@ -184,6 +186,8 @@ texture:Bind(0)
 local tube = Nanotube.Global
 tube.UseSleep = false
 
+window:SetTube(tube)
+
 local rate = 1 / 120
 local ot = Time:Get()
 local t = Time:Get()
@@ -193,23 +197,30 @@ local dt = t - ot
 tube:On("Draw", function(dt)
 	clearer:Draw()
 
-	local w, h = window:GetSize()
-	local x, y = window:GetMousePosition()
+	local omodel = Matrix4x4:NewIdentity():RotateYInPlace(t):RotateZInPlace(t / 5)
+	local model = omodel
 
-	local x_theta = math.pi * (2 * x / w - 1)
-	local y_theta = math.pi * (2 * y / h - 1)
-
-	local model = Matrix4x4:NewIdentity():Rotate(x_theta, 0, y_theta)
 	local view = Matrix4x4:NewIdentity()
-	--Perspective seems to screw everything up!
-	--local projection = Matrix4x4:NewPerspective(math.rad(40), w / h, -1, 1)
 	local projection = Matrix4x4:NewOrthographic(-w / h, w / h, -1, 1, -2, 2)
 
-	local nope = 0
-	shader:SetUniform("transform_view", 1, nope, view:GetNative())
-	shader:SetUniform("transform_projection", 1, nope, projection:GetNative())
-	shader:SetUniform("transform_model", 1, nope, model:GetNative())
-	mesh:Draw()
+	local function draw()
+		shader:SetMatrixUniform("transform_view", view:GetNative())
+		shader:SetMatrixUniform("transform_projection", projection:GetNative())
+		shader:SetMatrixUniform("transform_model", model:GetNative())
+		mesh:Draw()
+	end
+
+	model = omodel:Translate(1, 0, 0)
+	draw()
+
+	model = omodel:Translate(0, 1, 0)
+	draw()
+
+	model = omodel:Translate(-1, 0, 0)
+	draw()
+
+	model = omodel:Translate(0, -1, 0)
+	draw()
 end)
 
 -- Tell the tube what to do every step
