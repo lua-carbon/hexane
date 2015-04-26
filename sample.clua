@@ -1,12 +1,15 @@
 -- Sample: Make a Window, draw a cube rotated with the mouse.
 
 local ffi = require("ffi")
-local Hexane = require("Hexane")
+local Hexane = (...)
 local Carbon = Hexane.Carbon
 
 local Time = Carbon.Time
 local Nanotube = Carbon.Nanotube
+local Vector2 = Carbon.Math.Vector2
 local Vector3 = Carbon.Math.Vector3
+local Vector4 = Carbon.Math.Vector4
+local Quaternion = Carbon.Math.Quaternion
 local Matrix4x4 = Carbon.Math.Matrix4x4
 
 -- Create an object with information about the window we'll be making.
@@ -31,6 +34,7 @@ window:SetDepthFunction("less")
 window:SetBlendMode("src_alpha", "one_minus_src_alpha")
 
 Hexane.Input.MouseContext:New(window)
+Hexane.Input.KeyboardContext:New(window)
 
 -- Create a 'Clearer' which manages clearing the buffer between frames
 local clearer = Hexane.Graphics.Clearer:New()
@@ -193,15 +197,61 @@ local ot = Time:Get()
 local t = Time:Get()
 local dt = t - ot
 
+window.Mouse:SetMode("disabled")
+
+tube:On("KeyDown", function(key, scancode, mods)
+	if (key == "escape") then
+		tube:Stop()
+	end
+end)
+
+local camera_position = Vector3(0, 0, 3)
+local camera_orientation = Matrix4x4:NewIdentity()
+
+local camera_matrix = Matrix4x4:New()
+local mouse = Vector2(0, 0)
+local old_mouse = Vector2(0, 0)
+tube:On("MouseMove", function(x, y)
+	old_mouse:Init(mouse:GetComponents())
+	mouse:Init(x, y)
+
+	local dmouse = mouse:SubtractVector(old_mouse)
+	camera_orientation:RotateXInPlace(-dmouse[2]/100)
+	camera_orientation:RotateYInPlace(-dmouse[1]/100)
+end)
+
+tube:On("Update", function(dt)
+	local vec = Vector4()
+	local speed = 0.05
+
+	if (window.Keyboard:IsKeyDown("w")) then
+		vec:AddLooseVector!(0, 0, 1)
+	elseif (window.Keyboard:IsKeyDown("s")) then
+		vec:AddLooseVector!(0, 0, -1)
+	end
+
+	if (window.Keyboard:IsKeyDown("a")) then
+		vec:AddLooseVector!(1, 0, 0)
+	elseif (window.Keyboard:IsKeyDown("d")) then
+		vec:AddLooseVector!(-1, 0, 0)
+	end
+
+	vec:Normalize!():Scale!(speed)
+	camera_orientation:MultiplyVector!(vec)
+	camera_position:AddVector!(vec)
+end)
+
 -- Tell the tube what to do on draw
 tube:On("Draw", function(dt)
 	clearer:Draw()
 
-	local omodel = Matrix4x4:NewIdentity():RotateYInPlace(t):RotateZInPlace(t / 5)
+	local omodel = Matrix4x4:NewIdentity()--:RotateYInPlace(t):RotateZInPlace(t / 5)
 	local model = omodel
 
-	local view = Matrix4x4:NewIdentity()
-	local projection = Matrix4x4:NewOrthographic(-w / h, w / h, -1, 1, -2, 2)
+	local view = Matrix4x4:Translation(camera_position->xyz)
+		:MultiplyMatrix(camera_orientation)
+	local projection = Matrix4x4:NewPerspective(math.rad(70), 16/9, 0.1, 10)
+	--local projection = Matrix4x4:NewOrthographic(-w / h, w / h, 1, -1, -4, 4)
 
 	local function draw()
 		shader:SetMatrixUniform("transform_view", view:GetNative())
@@ -229,6 +279,8 @@ tube:On("Step", function()
 		tube:Stop()
 	else
 		window:PollEvents()
+		window:FireEvents()
+
 		tube:Fire("Update", dt)
 		tube:Fire("Draw")
 		window:SwapBuffers()

@@ -23,7 +23,7 @@ function WindowStateContext:Init(window)
 	end
 
 	local callback_close = ffi.cast("GLFWwindowclosefun", function()
-		window:Fire("Close")
+		window:QueueEvent("Close")
 	end)
 
 	GLFW.SetWindowCloseCallback(window.__context, callback_close)

@@ -28,13 +28,13 @@ local direct_arrow_indices = {
 	s = 1, t = 2, p = 3, q = 4
 }
 
-local function matchexpr(source, start, backwards)
+local function matchexpr(source, start, backwards, spaces)
 	local direction = backwards and -1 or 1
 
 	-- parens, bracket, curly brace
 	local plevel, blevel, clevel = 0, 0, 0
 	local target_beginning = start
-	local space_ok = true
+	local space_ok = not spaces
 
 	for i = start, (backwards and 1 or #source), direction do
 		local char = source:sub(i, i)
@@ -48,7 +48,7 @@ local function matchexpr(source, start, backwards)
 				-- Crawl around to see if the next character would be illegal
 				for j = i, (backwards and 1 or #source), direction do
 					local char = source:sub(j, j)
-					if (char:match(backwards and "[%w%)%}%];]" or "[%w;]")) then
+					if (char:match(backwards and "[%w=%)%}%];\26\27]" or "[%w=;\26\27]")) then
 						die = true
 						break
 					elseif (char:match("%S")) then
@@ -60,9 +60,11 @@ local function matchexpr(source, start, backwards)
 					break
 				end
 			end
+		elseif (char:match(",") and plevel == 0 and blevel == 0 and clevel == 0) then
+			break
 		else
 			target_beginning = target_beginning + direction
-			space_ok = not char:match("[%w_]")
+			space_ok = not char:match("[%w_%]%)]")
 
 			if (char == "[") then
 				blevel = blevel + direction
@@ -76,6 +78,11 @@ local function matchexpr(source, start, backwards)
 				clevel = clevel + direction
 			elseif (char == "}") then
 				clevel = clevel - direction
+			end
+
+			if (blevel < 0 or clevel < 0 or plevel < 0) then
+				target_beginning = target_beginning - 2 * direction
+				break
 			end
 		end
 	end
@@ -94,7 +101,7 @@ local function operator_double(source, operator)
 		end
 
 		local target_beginning = matchexpr(source, start - 1, true)
-		local target = source:sub(target_beginning, start - 1):gsub("^%s+", ""):gsub("%s+$", "")
+		local target = source:sub(target_beginning, start - 1)
 
 		source = ("%s\n%s = (%s) %s 1\n%s"):format(
 			source:sub(1, target_beginning - 1),
@@ -110,21 +117,22 @@ end
 local function operator_mutating(source, operator)
 	local start, finish = 0, 0
 	while (true) do
-		start, finish = source:find(operator .. "=", finish + 1)
+		start, finish = source:find(operator .. "=", finish + 1, true)
 		
 		if (not start) then
 			break
 		end
 
 		local target_beginning = matchexpr(source, start - 1, true)
-		local target = source:sub(target_beginning, start - 1):gsub("^%s+", ""):gsub("%s+$", "")
+		local target = source:sub(target_beginning, start - 1)
 
 		local value_ending = matchexpr(source, finish + 1)
-		local value = source:sub(finish + 1, value_ending):gsub("^%s+", ""):gsub("%s+$", "")
+		local value = source:sub(finish + 1, value_ending)
 
-		source = ("%s\n%s = %s + (%s)\n%s"):format(
+		source = ("%s\n%s = %s %s (%s)\n%s"):format(
 			source:sub(1, target_beginning - 1),
 			target, target,
+			operator,
 			value,
 			source:sub(value_ending + 1)
 		)
@@ -134,17 +142,41 @@ local function operator_mutating(source, operator)
 end
 
 local function operator_dan(source)
-	-- Implement direct arrow operator
-	-- Transforms vec3->x to vec3[1], see 'direct_arrow_indices' table above
-	return (source:gsub("(([^-])%->([%w_]+))", function(whole, prec, key)
-		local index = direct_arrow_indices[key]
+	local start, finish = 0, 0
+	while (true) do
+		local prec, keys
+		start, finish, keys = source:find("%->([%w_]+)", finish + 1)
 
-		if (not index) then
-			error("Cannot compile Carbide Lua: invalid array lookup '" .. key .. "'", 2)
+		if (not start) then
+			break
 		end
 
-		return ("%s[%d]"):format(prec, index)
-	end))
+		local target_beginning = matchexpr(source, start - 1, true, true)
+		local target = source:sub(target_beginning, start - 1)
+
+		local mod_ending = matchexpr(source, finish + 1, false, true)
+		local mod = source:sub(finish + 1, mod_ending)
+
+		local lookups = {}
+		for i = 1, #keys do
+			local key = keys:sub(i, i)
+			local index = direct_arrow_indices[key]
+
+			if (not index) then
+				error("Cannot compile Carbide Lua: invalid array lookup '" .. key .. "'", 2)
+			end
+
+			table.insert(lookups, ("%s[%d]%s"):format(target, index, mod))
+		end
+
+		source = ("%s%s%s"):format(
+			source:sub(1, target_beginning - 1),
+			table.concat(lookups, ", "),
+			source:sub(mod_ending + 1)
+		)
+	end
+
+	return source
 end
 
 local function operator_bang(source)
@@ -165,6 +197,8 @@ local function strip_strings(source, str_tab)
 	end
 
 	source = source
+		:gsub("(%-%-%[(=*)%[.-%]%2%])", predicate) --multiline comment
+		:gsub("%-%-[^\n]+", predicate) -- single line comment
 		:gsub("%b\"\"", predicate)
 		:gsub("%b''", predicate)
 		:gsub("(%[(=*)%[.-%]%2%])", predicate)
@@ -179,16 +213,19 @@ local function replace_strings(source, str_tab)
 end
 
 --[[#method {
-	class public @string Carbide.ParseTemplated(@string source)
+	class public @string Carbide.ParseTemplated(@string source, [@table settings])
 		required source: The source to parse for templates.
+		optional settings: Settings (source directives) to use when parsing the templates.
 
 	Parses the source file for templates if it contains a `#TEMPLATES_ENABLED` directive.
 
 	The document can change the templating level using `#TEMPLATE_LEVEL <level>`.
 }]]
-function Carbide.ParseTemplated(source)
-	if (source:find("#TEMPLATES_ENABLED")) then
-		local level = tonumber(source:match("#TEMPLATE_LEVEL%s+(%d+)"))
+function Carbide.ParseTemplated(source, settings)
+	settings = settings or {}
+
+	if (settings.TEMPLATES_ENABLED or source:find("#TEMPLATES_ENABLED")) then
+		local level = settings.TEMPLATE_LEVEL or tonumber(source:match("#TEMPLATE_LEVEL%s+(%d+)")) or 0
 		local result, err, template = Carbide.Engine:Render(source, {Carbon = Carbon, __engine = Carbide.Engine}, level)
 		
 		if (not result) then
@@ -202,16 +239,30 @@ function Carbide.ParseTemplated(source)
 end
 
 --[[#method {
-	class public @string Carbide.ParseCore(@string source)
+	class public @string Carbide.ParseCore(@string source, [@table settings])
 		required source: The source to parse.
+		optional settings: Settings (source directives) to pass to the parser
 
 	Parses the given source for Carbide expressions.
 
 	The source can change the feature level with `#CARBIDE_FEATURE_LEVEL <level>`, which defaults to `2`.
 }]]
-function Carbide.ParseCore(source)
-	local feature_level = tonumber(source:match("#CARBIDE_FEATURE_LEVEL (%d+)")) or 2
-	local extensions = {}
+function Carbide.ParseCore(source, settings)
+	settings = settings or {}
+
+	local feature_level
+	if (settings.CARBIDE_FEATURE_LEVEL) then
+		feature_level = settings.CARBIDE_FEATURE_LEVEL
+	else
+		feature_level = tonumber(source:match("#CARBIDE_FEATURE_LEVEL (%d+)")) or 2
+	end
+
+	local extensions
+	if (settings.EXTENSIONS) then
+		extensions = settings.EXTENSIONS
+	else
+		extensions = {}
+	end
 
 	source, str_tab = strip_strings(source)
 
@@ -234,23 +285,30 @@ function Carbide.ParseCore(source)
 end
 
 --[[#method 1 {
-	class public @function Carbide.Compile(@string source, [@string chunkname, @table environment])
+	class public @function Carbide.Compile(@string source, [@string chunkname, @table environment, @table settings])
 		required source: The Carbide source.
 		optional chunkname: The name of the chunk for Lua errors.
 		optional environment: The environment to compile the chunk with.
+		optional settings: The settings to compile Carbide with.
 
 	Parses and compiles the given Carbide source. A drop-in replacement for Carbon.LoadString.
 }]]
-function Carbide.Compile(source, name, environment)
-	source, err = Carbide.ParseTemplated(source)
+function Carbide.Compile(source, name, environment, settings)
+	source, err = Carbide.ParseTemplated(source, settings)
 
 	if (not source) then
 		error(err)
 	end
 
-	source = Carbide.ParseCore(source)
+	source = Carbide.ParseCore(source, settings)
 
-	return Carbon.LoadString(source, name, environment)
+	local chunk, err = Carbon.LoadString(source, name, environment)
+
+	if (Carbon.Debug and not chunk) then
+		print(source)
+	end
+
+	return chunk, err
 end
 
 Carbon.Metadata:RegisterMethods(Carbide, self)

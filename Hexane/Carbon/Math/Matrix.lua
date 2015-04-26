@@ -120,9 +120,10 @@ Matrix = {
 			Initializes or creates a matrix with a set of sized row-major values.
 		}]]
 		InitFromLoose = function(self, rows, columns, ...)
+			self:InitIdentity()
 			for i = 1, columns do
 				for j = 1, rows do
-					self[(i - 1) * columns + j] = select((i - 1) * columns + j, ...)
+					self:Set(i, j, select((i - 1) * columns + j, ...))
 				end
 			end
 
@@ -280,7 +281,7 @@ Matrix = {
 
 		InitIdentity = SQUARE_ONLY [[
 			return function(self)
-				return self:InitFromLoose(self:NewLooseIdentity())
+				return self:Init(select(3, self:NewLooseIdentity()))
 			end
 		]],
 
@@ -507,6 +508,10 @@ Matrix = {
 							_("+")
 						end
 					end
+
+					if (i < ROWS) then
+						_(",")
+					end
 				end %}
 			end
 		]],
@@ -547,6 +552,10 @@ Matrix = {
 			end
 		]],
 
+		MultiplyVectorInPlace = function(self, other)
+			return self:MultiplyVector(other, other)
+		end,
+
 		--[[#method {
 			object public @Vector<M> Matrix<N,M>:PreMultiplyVector(@Vector<M> other, [@Vector<M> out])
 				required other: The @Vector to multiply with.
@@ -582,6 +591,10 @@ Matrix = {
 				return out
 			end
 		]],
+
+		PreMultiplyVectorInPlace = function(self, other)
+			return self:MultiplyVector(other, other)
+		end,
 
 		--[[#method {
 			object public self Matrix<N,M>:MultiplyMatrix!(@Matrix other)
@@ -674,7 +687,8 @@ Matrix = {
 				return table.concat(buffer)
 			end
 		]]
-	}
+	},
+	__generated = {}
 }
 
 --[[#method {
@@ -699,7 +713,7 @@ function Matrix:__generate_method(body, arguments, env, name)
 		return false, CodeGenerationException:New(err, generated), generated
 	end
 
-	return generator()
+	return generated, generator()
 end
 
 --[[#method 0 {
@@ -721,6 +735,7 @@ function Matrix:Generate(rows, columns)
 	class.Is[Matrix] = true
 
 	local body = {
+		__generated = {},
 		RowCount = rows,
 		ColumnCount = columns
 	}
@@ -750,11 +765,14 @@ function Matrix:Generate(rows, columns)
 	-- Process methods for the generated class
 	for name, body in pairs(self.__methods) do
 		if (type(body) == "string") then
-			class[name], err, body = self:__generate_method(body, gen_args, env, name)
+			local generated, err
+			generated, class[name], err = self:__generate_method(body, gen_args, env, name)
 
 			if (not class[name]) then
 				return nil, err, name, body
 			end
+
+			class.__generated[name] = generated
 		else
 			class[name] = body
 		end
@@ -764,7 +782,8 @@ function Matrix:Generate(rows, columns)
 
 	for name, body in pairs(self.__metatable) do
 		if (type(body) == "string") then
-			metatable[name], err, body = self:__generate_method(body, gen_args, env, name)
+			local generated, err
+			generated, metatable[name], err = self:__generate_method(body, gen_args, env, name)
 
 			if (not metatable[name]) then
 				return nil, err, name, body

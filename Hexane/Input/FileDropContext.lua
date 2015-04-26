@@ -29,7 +29,7 @@ function FileDropContext:Init(window)
 			table.insert(files, ffi.string(paths[i]))
 		end
 
-		window:Fire("FileDrop", files)
+		window:QueueEvent("FileDrop", files)
 	end)
 
 	GLFW.SetDropCallback(window.__context, callback_drop)

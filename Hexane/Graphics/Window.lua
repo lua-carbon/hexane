@@ -44,6 +44,9 @@ local Window = OOP:Class()
 	:Attributes {
 		InstanceIndirection = true
 	}
+	:Members {
+		__queued_events = {}
+	}
 
 function Window:Init(info)
 	info = info or ContextInfo:New()
@@ -66,6 +69,20 @@ end
 
 function Window:GetTube()
 	return self.__tube
+end
+
+function Window:QueueEvent(name, ...)
+	table.insert(self.__queued_events, {name, ...})
+end
+
+function Window:FireEvents()
+	if (self.__tube) then
+		for key, event in ipairs(self.__queued_events) do
+			self.__tube:Fire(unpack(event))
+		end
+	end
+	
+	self.__queued_events = {}
 end
 
 function Window:Fire(name, ...)

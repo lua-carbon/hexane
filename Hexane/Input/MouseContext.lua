@@ -11,10 +11,36 @@ local GLFW = Hexane.Bindings.GLFW
 
 local ffi = require("ffi")
 
+local function fix_ffi_map(dict)
+	local out = {}
+
+	for key, value in pairs(dict) do
+		out[tonumber(key)] = value
+	end
+
+	return out
+end
+
 local mouse_modes = {
 	disabled = GLFW.CURSOR_DISABLED,
 	hidden = GLFW.CURSOR_HIDDEN,
 	normal = GLFW.CURSOR_NORMAL
+}
+
+local actions = fix_ffi_map {
+	[GLFW.PRESS] = "press",
+	[GLFW.RELEASE] = "release"
+}
+
+local mouse_buttons = fix_ffi_map {
+	[GLFW.MOUSE_BUTTON_1] = 1,
+	[GLFW.MOUSE_BUTTON_2] = 2,
+	[GLFW.MOUSE_BUTTON_3] = 3,
+	[GLFW.MOUSE_BUTTON_4] = 4,
+	[GLFW.MOUSE_BUTTON_5] = 5,
+	[GLFW.MOUSE_BUTTON_6] = 6,
+	[GLFW.MOUSE_BUTTON_7] = 7,
+	[GLFW.MOUSE_BUTTON_8] = 8,
 }
 
 local MouseContext = OOP:Class()
@@ -30,19 +56,28 @@ function MouseContext:Init(window)
 	end
 
 	local callback_move = ffi.cast("GLFWcursorposfun", function(context, x, y)
-		window:Fire("MouseMove", x, y)
+		window:QueueEvent("MouseMove", x, y)
 	end)
 
 	local callback_enter = ffi.cast("GLFWcursorenterfun", function(context, state)
-		window:Fire("MouseEnter", state ~= 0)
+		window:QueueEvent("MouseEnter", state ~= 0)
 	end)
 
-	local callback_click = ffi.cast("GLFWmousebuttonfun", function(context, button, action, mods)
-		window:Fire("MouseClick", button, action, mods)
+	local callback_click = ffi.cast("GLFWmousebuttonfun", function(context, glfw_button, glfw_action, mods)
+		local button = mouse_buttons[glfw_button]
+		local action = actions[glfw_action]
+
+		window:QueueEvent("MouseButton", button, action, mods)
+
+		if (action == "press") then
+			window:QueueEvent("MouseButtonDown", button, mods)
+		elseif (action == "release") then
+			window:QueueEvent("MouseButtonUp", button, mods)
+		end
 	end)
 
 	local callback_scroll = ffi.cast("GLFWscrollfun", function(context, x, y)
-		window:Fire("MouseScroll", x, y)
+		window:QueueEvent("MouseScroll", x, y)
 	end)
 
 	GLFW.SetCursorPosCallback(window.__context, callback_move)

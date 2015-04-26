@@ -216,13 +216,17 @@ function OOP.BaseClass:Inherits(...)
 
 		-- Is this an actual class, or just a collection of members?
 		if (object.__members and object.__metatable and object.Is and object.__attributes) then
-			Dictionary.DeepCopyMerge(object.__members, self.__members)
+			Dictionary.RawDeepCopyMerge(object.__members, self.__members)
 			Dictionary.DeepCopyMerge(object.__metatable, self.__metatable)
 			Dictionary.ShallowMerge(object.Is, self.Is)
 
 			for key, value in pairs(object.__attributes) do
 				if (OOP.__attribute_inheritance[key]) then
-					self.__attributes = Dictionary.DeepCopy(value)
+					if (type(value) == "table") then
+						self.__attributes[key] = Dictionary.DeepCopy(value)
+					else
+						self.__attributes[key] = value
+					end
 				end
 			end
 
@@ -233,7 +237,7 @@ function OOP.BaseClass:Inherits(...)
 			end
 		else
 			-- This isn't really a class, but we can treat it like one!
-			Dictionary.DeepCopyMerge(object, self.__members)
+			Dictionary.RawDeepCopyMerge(object, self.__members)
 		end
 	end
 
@@ -344,8 +348,8 @@ function OOP.Object:PlacementNew(instance, ...)
 
 	-- These attributes all disable member copying
 	if (not (self.__attributes.SparseInstances or self.__attributes.ExplicitInitialization or self.__attributes.EXT_LJ_Struct)) then
-		Dictionary.DeepCopy(self.__base_members, instance)
-		Dictionary.DeepCopy(self.__members, instance)
+		Dictionary.DeepCopy(self.__base_members, instance, 1)
+		Dictionary.DeepCopy(self.__members, instance, 1)
 	end
 
 	if (not self.__attributes.EXT_LJ_Struct) then
@@ -407,11 +411,10 @@ end
 
 	Copies the given object.
 }]]
-OOP.Object.__base_members.Copy = function(self)
+OOP.Object.__base_members.Copy = function(self, target)
 	local class = self.class
-	local target
 
-	if (class.__attributes.PooledInstantiation) then
+	if (not target and class.__attributes.PooledInstantiation) then
 		target = table.remove(class.__pool, #class.__pool) or {}
 	end
 
@@ -465,7 +468,10 @@ function OOP:Class(based_on)
 
 	setmetatable(class, {
 		__newindex = class.__members,
-		__index = class.__members
+		__index = class.__members,
+		__call = function(self, ...)
+			return self:New(...)
+		end
 	})
 
 	return class
