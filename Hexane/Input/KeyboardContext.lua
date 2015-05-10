@@ -12,17 +12,7 @@ local KeyMap = Hexane.Input.KeyMap
 
 local ffi = require("ffi")
 
-local function fix_ffi_map(dict)
-	local out = {}
-
-	for key, value in pairs(dict) do
-		out[tonumber(key)] = value
-	end
-
-	return out
-end
-
-local actions = fix_ffi_map {
+local actions = Hexane.FFIMap {
 	[GLFW.PRESS] = "press",
 	[GLFW.RELEASE] = "release"
 }

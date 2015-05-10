@@ -1,17 +1,7 @@
 local Hexane = (...)
 local GLFW = Hexane.Bindings.GLFW
 
-local function fix_ffi_map(dict)
-	local out = {}
-
-	for key, value in pairs(dict) do
-		out[tonumber(key)] = value
-	end
-
-	return out
-end
-
-local KeyMap = fix_ffi_map {
+local KeyMap = Hexane.FFIMap {
 	[GLFW.KEY_SPACE] = "space",
 	[GLFW.KEY_APOSTROPHE] = "apostrophe",
 	[GLFW.KEY_COMMA] = "comma",
@@ -134,12 +124,5 @@ local KeyMap = fix_ffi_map {
 	[GLFW.KEY_RIGHT_SUPER] = "rsuper",
 	[GLFW.KEY_MENU] = "menu"
 }
-
-local inverse = {}
-for key, value in pairs(KeyMap) do
-	inverse[value] = key
-end
-
-KeyMap.Inverse = inverse
 
 return KeyMap

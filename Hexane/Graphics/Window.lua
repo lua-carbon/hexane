@@ -6,6 +6,8 @@
 local Hexane = (...)
 local Carbon = Hexane.Carbon
 local OOP = Carbon.OOP
+local Nanotube = Carbon.Nanotube
+local Time = Carbon.Time
 local ContextInfo = Hexane.Graphics.ContextInfo
 local GLFW = Hexane.Bindings.GLFW
 Hexane.Bindings.OpenGL:ImportAll()
@@ -37,18 +39,27 @@ local depths = {
 
 local features = {
 	["depth"] = GL.DEPTH_TEST,
-	["blending"] = GL.BLEND
+	["blending"] = GL.BLEND,
+	["face_culling"] = GL.CULL_FACE
 }
 
 local Window = OOP:Class()
+	:Inherits(Nanotube)
 	:Attributes {
 		InstanceIndirection = true
 	}
 	:Members {
-		__queued_events = {}
+		__queued_events = {},
+		MaxRate = 1 / 120,
+		LastTime = 0,
+		Time = 0,
+		DeltaTime = 0
 	}
 
 function Window:Init(info)
+	Nanotube.Init(self)
+	self.UseSleep = false
+
 	info = info or ContextInfo:New()
 
 	local context, exception = info:CreateContext()
@@ -60,15 +71,11 @@ function Window:Init(info)
 	self.__info = info
 	self.__context = context
 
+	self.LastTime = Time:Get()
+	self.Time = Time:Get()
+	self.DeltaTime = 0
+
 	self:Use()
-end
-
-function Window:SetTube(tube)
-	self.__tube = tube
-end
-
-function Window:GetTube()
-	return self.__tube
 end
 
 function Window:QueueEvent(name, ...)
@@ -76,19 +83,11 @@ function Window:QueueEvent(name, ...)
 end
 
 function Window:FireEvents()
-	if (self.__tube) then
-		for key, event in ipairs(self.__queued_events) do
-			self.__tube:Fire(unpack(event))
-		end
+	for key, event in ipairs(self.__queued_events) do
+		self:Fire(unpack(event))
 	end
 	
 	self.__queued_events = {}
-end
-
-function Window:Fire(name, ...)
-	if (self.__tube) then
-		self.__tube:Fire(name, ...)
-	end
 end
 
 function Window:SetBlendMode(a, b)
@@ -107,13 +106,19 @@ function Window:DisableFeature(feature)
 	gl.Disable(features[feature])
 end
 
-function Window:GetSize()
+function Window:GetFramebufferSize()
+	local size = ffi.new("int[2]")
+	GLFW.GetFramebufferSize(self.__context, size, size + 1)
+	return size[0], size[1]
+end
+
+function Window:GetWindowSize()
 	local size = ffi.new("int[2]")
 	GLFW.GetWindowSize(self.__context, size, size + 1)
 	return size[0], size[1]
 end
 
-function Window:SetSize(w, h)
+function Window:SetWindowSize(w, h)
 	GLFW.SetWindowSize(self.__context, w, h)
 end
 
@@ -192,6 +197,25 @@ end
 function Window:Destroy()
 	if (self.__context) then
 		GLFW.DestroyWindow(self.__context)
+	end
+end
+
+function Window:Step()
+	if (self:ShouldClose()) then
+		self:Stop()
+	else
+		self:PollEvents()
+		self:FireEvents()
+
+		self:Fire("Update", self.DeltaTime)
+		self:Fire("Draw")
+		self:SwapBuffers()
+
+		Time.Sleep(self.MaxRate)
+
+		self.Time = Time:Get()
+		self.DeltaTime = self.Time - self.LastTime
+		self.LastTime = self.Time
 	end
 end
 

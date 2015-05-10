@@ -111,7 +111,33 @@ function Test:Run(test)
 			local vec = {5, 10, 15}
 			local x, y, z = vec->xyz + 5
 			return x + y + z
-		]], 45}
+		]], 45},
+
+		{[[
+			local vec = {5, 10, 15}
+			local vecn = {vec->xyz + 5}
+			local x, y, z = vecn->xyz
+			return x + y + z
+		]], 45},
+
+		{[[
+			local vec = {5, 10, 15}
+			local vecn = { vec->xyz + 5 }
+			local x, y, z = vecn->xyz
+			return x + y + z
+		]], 45},
+
+		{[[
+			local vec = {5, 10}
+			setmetatable(vec, {
+				__mul = function(self, other)
+					return {self[1] * other, self[2] * other}
+				end
+			})
+
+			local x, y = (vec * 2)->xy
+			return x + y
+		]], 30}
 	)
 
 	feature(test, "increment",

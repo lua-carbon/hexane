@@ -11,28 +11,18 @@ local GLFW = Hexane.Bindings.GLFW
 
 local ffi = require("ffi")
 
-local function fix_ffi_map(dict)
-	local out = {}
-
-	for key, value in pairs(dict) do
-		out[tonumber(key)] = value
-	end
-
-	return out
-end
-
 local mouse_modes = {
 	disabled = GLFW.CURSOR_DISABLED,
 	hidden = GLFW.CURSOR_HIDDEN,
 	normal = GLFW.CURSOR_NORMAL
 }
 
-local actions = fix_ffi_map {
+local actions = Hexane.FFIMap {
 	[GLFW.PRESS] = "press",
 	[GLFW.RELEASE] = "release"
 }
 
-local mouse_buttons = fix_ffi_map {
+local mouse_buttons = Hexane.FFIMap {
 	[GLFW.MOUSE_BUTTON_1] = 1,
 	[GLFW.MOUSE_BUTTON_2] = 2,
 	[GLFW.MOUSE_BUTTON_3] = 3,
@@ -84,6 +74,16 @@ function MouseContext:Init(window)
 	GLFW.SetCursorEnterCallback(window.__context, callback_enter)
 	GLFW.SetMouseButtonCallback(window.__context, callback_click)
 	GLFW.SetScrollCallback(window.__context, callback_scroll)
+end
+
+function MouseContext:IsButtonDown(button)
+	local state = GLFW.GetMouseButton(self.__window.__context, mouse_buttons.Inverse[button])
+
+	if (state == GLFW.PRESS) then
+		return true
+	else
+		return false
+	end
 end
 
 function MouseContext:SetMode(mode)
