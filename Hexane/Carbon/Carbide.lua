@@ -11,6 +11,7 @@
 
 local Carbon, self = ...
 local TemplateEngine = Carbon.TemplateEngine
+local SyntaxErrorException = Carbon.Exceptions.SyntaxErrorException
 
 local loadstring = loadstring or load
 
@@ -108,8 +109,10 @@ local function matchexpr(source, start, backwards, last_nspace)
 				return i - direction
 			else
 				-- FIXME: This line is not necessarily accurate if the source is transformed.
-				local line = lineno(source, i)
-				return false, "Cannot have semicolon (';') when elevel ~= 0!"
+				return false, SyntaxErrorException(
+					"Cannot have semicolon (';') when elevel ~= 0!",
+					lineno(source, i)
+				)
 			end
 		elseif (elevel == 0 and char:match(",")) then
 			return i - direction
@@ -122,6 +125,12 @@ local function matchexpr(source, start, backwards, last_nspace)
 
 				if (last_nspace:match("[%w_]")) then
 					illegal_set = illegal_set .. "%w_\26\27"
+
+					if (backwards) then
+						illegal_set = illegal_set .. "%)%}%]"
+					end
+				elseif (forwards and last_nspace:match("[%)%}%]]")) then
+					illegal_set = illegal_set .. "%w"
 				end
 
 				if (elevel == 0) then
@@ -241,7 +250,10 @@ local function operator_dan(source)
 			local index = direct_arrow_indices[key]
 
 			if (not index) then
-				error("Cannot compile Carbide Lua: invalid array lookup '" .. key .. "' in '" .. keys .. "'", 2)
+				return false, SyntaxErrorException(
+					"Cannot compile Carbide Lua: invalid array lookup '" .. key .. "' in '" .. keys .. "'",
+					lineno(source, target_beginning)
+				)
 			end
 
 			table.insert(lookups, ("%s[%d]%s"):format(target, index, mod))
@@ -352,17 +364,55 @@ function Carbide.ParseCore(source, settings)
 
 	source, str_tab = strip_strings(source)
 
+	local err
 	if (feature_level >= 1) then
-		source = operator_bang(source)
-		source = operator_dan(source)
+		source, err = operator_bang(source)
 
-		source = operator_double(source, "+")
+		if (not source) then
+			return nil, err
+		end
 
-		source = operator_mutating(source, "+")
-		source = operator_mutating(source, "-")
-		source = operator_mutating(source, "*")
-		source = operator_mutating(source, "/")
-		source = operator_mutating(source, "^")
+		source, err = operator_dan(source)
+
+		if (not source) then
+			return nil, err
+		end
+
+		source, err = operator_double(source, "+")
+
+		if (not source) then
+			return nil, err
+		end
+
+		source, err = operator_mutating(source, "+")
+
+		if (not source) then
+			return nil, err
+		end
+
+		source, err = operator_mutating(source, "-")
+
+		if (not source) then
+			return nil, err
+		end
+
+		source, err = operator_mutating(source, "*")
+
+		if (not source) then
+			return nil, err
+		end
+
+		source, err = operator_mutating(source, "/")
+
+		if (not source) then
+			return nil, err
+		end
+
+		source, err = operator_mutating(source, "^")
+
+		if (not source) then
+			return nil, err
+		end
 	end
 
 	source = replace_strings(source, str_tab)
@@ -398,18 +448,18 @@ function Carbide.Compile(source, name, environment, settings)
 	source, err = Carbide.ParseTemplated(source, settings)
 
 	if (not source) then
-		error(err)
+		return false, SyntaxErrorException(err)
 	end
 
 	source = Carbide.ParseCore(source, settings)
 
 	local chunk, err = Carbon.LoadString(source, name, environment)
 
-	if (Carbon.Debug and not chunk) then
-		print(source)
+	if (not chunk) then
+		return false, SyntaxErrorException(err)
 	end
 
-	return chunk, err
+	return chunk
 end
 
 Carbon.Metadata:RegisterMethods(Carbide, self)

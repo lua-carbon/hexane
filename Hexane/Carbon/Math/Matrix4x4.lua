@@ -36,10 +36,26 @@ Matrix4x4:Inherits(Carbon.Math.Matrix3x3)
 	Takes a loose @Quaternion and returns a loose rotation matrix from it.
 }]]
 function Matrix4x4:NewLooseFromLooseQuaternion(x, y, z, w)
-	return
-		w^2+x^2-y^2-z^2, 2*x*y-2*w*z, 2*x*z+2*w*y, 0,
-		2*x*y+2*w*z, w^2-x^2+y^2-z^2, 2*y*z+2*w*z, 0,
-		2*x*z-2*w*y, 2*y*z-2*w*z, w^2-x^2-y^2+z^2, 0,
+	local tx = x + x
+	local ty = y + y
+	local tz = z + z
+	
+	local twx = tx * w
+	local twy = ty * w
+	local twz = tz * w
+
+	local txx = tx * x
+	local txy = ty * x
+	local txz = tz * x
+
+	local tyy = ty * y
+	local tyz = tz * y
+	local tzz = tz * z
+
+	return 4, 4,
+		1 - (tyy + tzz), txy - twz, txz + twy, 0,
+		txy + twz, 1 - (txx + tzz), tyz - twx, 0,
+		txz - twy, tyz + twx, 1 - (txx + tyy), 0,
 		0, 0, 0, 1
 end
 
@@ -76,18 +92,38 @@ function Matrix4x4:InitFromQuaternion(quaternion)
 	return self:Init(self:NewLooseFromLooseQuaternion(quaternion:GetComponents()))
 end
 function Matrix4x4:NewFromQuaternion(quaternion)
-	return self:New(self:NewLooseFromLooseQuaternion(quaternion:GetComponents()))
+	return self:NewFromLoose(self:NewLooseFromLooseQuaternion(quaternion:GetComponents()))
 end
 
+--[[#method 2 {
+	class public @Matrix4x4 Matrix4x4:NewOrthographic(@number l, @number r, @number t, @number b, @number near, @number far)
+		required l: The left edge of the projection.
+		required r: The right edge of the projection.
+		required t: The top edge of the projection.
+		required b: The bottom edge of the projection.
+		required near: The near plane of the projection.
+		required far: The far plane of the projection.
+
+	Creates an orthographic projection matrix with the given properties
+}]]
 function Matrix4x4:NewOrthographic(left, right, top, bottom, near, far)
 	return self:New(
 		2 / (right - left), 0, 0, -((right + left)/(right - left)),
 		0, 2 / (top - bottom), 0, -((top + bottom)/(top - bottom)),
-		0, 0, -2 / (far - near), -(far + near)/(far - near),
-		0, 0, 0, 1
+		0, 0, -2 / (far - near), 0,
+		0, 0, -(far + near)/(far - near), 1
 	)
 end
 
+--[[#method 2 {
+	class public @Matrix4x4 Matrix4x4:NewPerspective(@number fov, @number aspect, @number near, @number far)
+		required fov: The field of view in radians.
+		required aspect: The aspect ratio of the observer.
+		required near: The near plane of the projection.
+		required far: The far plane of the projection.
+
+	Creates a perspective matrix with the given properties.
+}]]
 function Matrix4x4:NewPerspective(fov, aspect, near, far)
 	local t = math.tan(fov / 2)
 
@@ -99,6 +135,14 @@ function Matrix4x4:NewPerspective(fov, aspect, near, far)
 	)
 end
 
+--[[#method 2 {
+	class public @Matrix4x4 Matrix4x4:NewLookAt(@Vector3 eye, @Vector3 center, @Vector3 up)
+		required eye: The position of the observer.
+		required center: The focus of the observer.
+		required up: The upwards direction for the observer.
+
+	Creates a projection to look at a point from another.
+}]]
 function Matrix4x4:NewLookAt(eye, center, up)
 	local f = center:SubtractVector(eye):NormalizeInPlace()
 	local s = f:CrossMultiply(up):NormalizeInPlace()
@@ -393,6 +437,11 @@ function Matrix4x4:ScaleInPlace(x, y, z)
 	return self:Scale(x, y, z, self)
 end
 
+--[[#method {
+	object public @number Matrix4x4:GetDeterminant()
+
+	Returns the determinant of the matrix.
+}]]
 function Matrix4x4:GetDeterminant()
 	local
 		a11, a12, a13, a14,
@@ -411,6 +460,12 @@ function Matrix4x4:GetDeterminant()
 		- a14*a21*a32*a43 - a14*a22*a33*a41 - a14*a23*a31*a42
 end
 
+--[[#method {
+	object public @Matrix4x4 Matrix4x4:GetInverse([@Matrix4x4 out])
+		optional out: Where to put the data, a new matrix if not specified.
+
+	Yields the inverse of the matrix, optionally outputting into an existing matrix.
+}]]
 function Matrix4x4:GetInverse(out)
 	local
 		a11, a12, a13, a14,
@@ -419,6 +474,10 @@ function Matrix4x4:GetInverse(out)
 		a41, a42, a43, a44 = self:GetComponents()
 
 	local det = self:GetDeterminant()
+
+	if (det == 0) then
+		return self:Copy()
+	end
 
 	local b11 = (a22*a33*a44 + a23*a34*a42 + a24*a32*a43 - a22*a34*a43 - a23*a32*a44 - a24*a33*a42) / det
 	local b12 = (a12*a34*a43 + a13*a32*a44 + a14*a33*a42 - a12*a33*a44 - a13*a34*a42 - a14*a32*a43) / det

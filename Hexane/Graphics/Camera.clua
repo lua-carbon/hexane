@@ -1,0 +1,51 @@
+local Hexane = (...)
+local Carbon = Hexane.Carbon
+
+local Quaternion = Carbon.Math.Quaternion
+local Vector3 = Carbon.Math.Vector3
+local Matrix4x4 = Carbon.Math.Matrix4x4
+local OOP = Carbon.OOP
+
+local Camera = OOP:Class()
+
+function Camera:Init()
+	self.Position = Vector3()
+	self.Orientation = Quaternion(0, 0, 0, 1)
+	self.Projection = Matrix4x4:NewIdentity()
+	self.View = Matrix4x4:NewIdentity()
+end
+
+function Camera:SetPosition(x, y, z)
+	self.Position:Init(x, y, z)
+end
+
+function Camera:AddPosition(x, y, z)
+	self.Position:AddLooseVector!(x, y, z)
+end
+
+function Camera:SetProjection(projection)
+	projection:Copy(self.Projection)
+end
+
+function Camera:Update()
+	local mx, my,
+		m11, m12, m13, m14,
+		m21, m22, m23, m24,
+		m31, m32, m33, m34,
+		m41, m42, m43, m44 = Matrix4x4:NewLooseFromQuaternion(self.Orientation)
+	
+	self.View
+		:InitIdentity()
+
+	self.View
+		:Translate(self.Position->xyz)
+		:MultiplyLooseMatrix(mx, my,
+			m11, m12, m13, m14,
+			m21, m22, m23, m24,
+			m31, m32, m33, m34,
+			m41, m42, m43, m44,
+			self.View
+		)
+end
+
+return Camera

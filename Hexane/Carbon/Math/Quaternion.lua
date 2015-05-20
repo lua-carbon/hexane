@@ -14,6 +14,7 @@
 
 local Carbon = (...)
 local OOP = Carbon.OOP
+local Vector3 = Carbon.Math.Vector3
 local Vector4 = Carbon.Math.Vector4
 
 local sin, cos = math.sin, math.cos
@@ -87,13 +88,26 @@ function Quaternion:NewLooseFromLooseAngles(x, y, z)
 end
 
 --[[#method {
+	object public @loose<@Quaternion> Quaternion:LooseConjugate()
+
+	Returns the conjugate of the quaternion in loose form.
+}]]
+function Quaternion:LooseConjugate()
+	return -self[1], -self[2], -self[3], self[4]
+end
+
+--[[#method {
 	object public @Quaternion Quaternion:Conjugate([@Quaternion out])
 		optional out: Where to put the resulting data.
 
 	Returns the conjugate of the @Quaternion, `(-i, -j, -k, w)`.
 }]]
 function Quaternion:Conjugate(out)
-	return self:PlacementNew(out, -self[1], -self[2], -self[3], self[4])
+	if (out) then
+		out:Init(self:LooseConjugate())
+	else
+		self.class:New(self:LooseConjugate())
+	end
 end
 
 --[[#method {
@@ -107,6 +121,21 @@ function Quaternion:ConjugateInPlace()
 end
 
 --[[#method {
+	class public @loose<@Quaternion> Quaternion:LooseMultiplyLooseLoose(@loose<@Quaternion> a, @loose<@Quaternion> b)
+		required a: The left operand on the multiply.
+		required b: The right operand on the multiply.
+
+	Multiplies two loose quaternions together and returns the result in loose form.
+}]]
+function Quaternion:LooseMultiplyLooseLoose(x1, y1, z1, w1, x2, y2, z2, w2)
+	return
+		w1*x2 + x1*w2 + y1*z2 - z1*y2,
+		w1*y2 - x1*z2 + y1*w2 + z1*x2,
+		w1*z2 + x1*y2 - y1*x2 + z1*w2,
+		w1*w2 - x1*x2 - y1*y2 - z1*z2
+end
+
+--[[#method {
 	object public @loose<@Quaternion> @Quaternion:LooseMultiplyLoose(@loose<@Quaternion> quaternion)
 		required quaternion: The quaternion to multiply with.
 
@@ -115,11 +144,7 @@ end
 function Quaternion:LooseMultiplyLoose(x2, y2, z2, w2)
 	local x1, y1, z1, w1 = self:GetComponents()
 
-	return
-		w1*x2 + x1*w2 + y1*z2 - z1*y2,
-		w1*y2 - x1*z2 + y1*w2 + z1*x2,
-		w1*z2 + x1*y2 - y1*x2 + z1*w2,
-		w1*w2 - x1*x2 - y1*y2 - z1*z2
+	return self:LooseMultiplyLooseLoose(x1, y1, z1, w1, x2, y2, z2, w2)
 end
 
 --[[#method {
@@ -130,7 +155,11 @@ end
 	Multiplies the quaternion with a loose @Quaternion.
 }]]
 function Quaternion:MultiplyLoose(x2, y2, z2, w2, out)
-	return self:PlacementNew(out, self:LooseMultiplyLoose(x2, y2, z2, w2))
+	return self.class:PlacementNew(out, self:LooseMultiplyLoose(x2, y2, z2, w2))
+end
+
+function Quaternion:MultiplyLooseInPlace(x2, y2, z2, w2)
+	return self:MultiplyLoose(x2, y2, z2, w2, self)
 end
 
 --[[#method {
@@ -194,7 +223,7 @@ function Quaternion:Slerp(other, t, out)
 end
 
 --[[#method {
-	object public self @Quaternion:Slerp!(@Quaternion other, @number t)
+	object public self Quaternion:Slerp!(@Quaternion other, @number t)
 	-alias: object public self @Quaternion:SlerpInPlace(@Quaternion other, @number t)
 		required other: The @Quaternion to slerp with.
 		required t: A number, normally on [0, 1], that determines the mixing ratio of the quaternions.
@@ -203,6 +232,27 @@ end
 }]]
 function Quaternion:SlerpInPlace(other, t, out)
 	return self:Slerp(other, t, self)
+end
+
+--[[#method {
+	object public self Quaternion:TransformVector(@Vector3 vec, [@Vector3 out])
+		required vec: The vector to rotate.
+		optional out: Where to put the resulting data.
+
+	Transforms a vector by rotating it.
+}]]
+function Quaternion:TransformVector(vec, out)
+	local x, y, z, w = self:LooseMultiplyLoose(vec[1], vec[2], vec[3], 0)
+	x, y, z = self.class:LooseMultiplyLooseLoose(
+		x, y, z, w,
+		self:LooseConjugate()
+	)
+
+	if (out) then
+		out:Init(x, y, z)
+	else
+		return Vector3(x, y, z)
+	end
 end
 
 return Quaternion

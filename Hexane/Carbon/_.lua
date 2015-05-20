@@ -22,10 +22,15 @@ function Carbon:ImportCore()
 	return self:Import("Async", "Assert", "Error", "IsObject", "LoadString")
 end
 
+--[[#property public @dictionary Carbon.Support {
+	Contains the support information provided by Graphene.
+}]]
+Carbon.Support = Graphene.Support
+
 --[[#property public @list Carbon.Version {
 	Contains the current version in the form `{major, minor, revision, status}`.
 }]]
-Carbon.Version = {1, 0, 0}
+Carbon.Version = {1, 1, 0, "tip"}
 
 --[[#property public @string Carbon.VersionString {
 	Contains a string version of the current version in the form `"major.minor.revision-status"`.
@@ -37,6 +42,43 @@ Carbon.VersionString = ("%d.%d.%d%s%s"):format(
 	Carbon.Version[4] and "-" or "",
 	Carbon.Version[4] or ""
 )
+
+--[[#property public @map Carbon.Features {
+	Contains a set of features and whether they are enabled or disabled.
+}]]
+Carbon.Features = {
+	Debug = false
+}
+
+--[[#method {
+	class public @void Carbon.Enable(@any feature)
+		required feature: The feature to enable
+
+	Enables a feature by name.
+}]]
+function Carbon.Enable(feature)
+	Carbon.Features[feature] = true
+end
+
+--[[#method {
+	class public @void Carbon.Disable(@any feature)
+		required feature: The feature to disable
+
+	Disables a feature by name.
+}]]
+function Carbon.Disable(feature)
+	Carbon.Features[feature] = false
+end
+
+--[[#method {
+	class public @void Carbon.Enabled(@any feature)
+		required feature: The feature to check
+
+	Returns whether a feature is enabled.
+}]]
+function Carbon.Enabled(feature)
+	return (not not Carbon.Features[feature])
+end
 
 --[[#method {
 	class public @coroutine Carbon.Async(@function method)
@@ -84,6 +126,42 @@ function Carbon.IsObject(x)
 	end
 
 	return false
+end
+
+--[[#method {
+	class public @function Carbon.Unpack(@table t)
+		required t: The table to unpack
+
+	Performs a fast
+}]]
+do
+	local _cache = {}
+	local function _generate(n)
+		local str_buffer = {}
+
+		for i = 1, n do
+			table.insert(str_buffer, ("arr[%d]"):format(i))
+		end
+		local str = table.concat(str_buffer, ",")
+
+		return loadstring(("return function(arr) return %s end"):format(str))()
+	end
+
+	local vunpack = unpack or table.unpack
+
+	function Carbon.Unpack(t)
+		local n = #t
+
+		if (n > 8) then
+			return vunpack(t)
+		end
+
+		if (not _cache[n]) then
+			_cache[n] = _generate(n)
+		end
+		
+		return _cache[n](t)
+	end
 end
 
 --[[#method {

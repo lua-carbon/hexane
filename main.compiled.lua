@@ -1,6 +1,4 @@
--- Sample: Make a Window, draw a cube rotated with the mouse.
 
---#COMPILE_TO main.compiled.lua
 
 local ffi = require("ffi")
 local Hexane = (...)
@@ -14,14 +12,12 @@ local Vector4 = Carbon.Math.Vector4
 local Quaternion = Carbon.Math.Quaternion
 local Matrix4x4 = Carbon.Math.Matrix4x4
 
--- Create an object with information about the window we'll be making.
 local info = Hexane.Graphics.ContextInfo:New()
 info.Title = "Hexane: Sample #1"
 info.Width = 1280
 info.Height = 720
 info.DepthBits = 24
 
--- Creating a new window automatically sets it as the current window
 local window, exception = Hexane.Graphics.Window:New(info)
 
 if (window == nil) then
@@ -39,13 +35,11 @@ window:SetBlendMode("src_alpha", "one_minus_src_alpha")
 Hexane.Input.MouseContext:New(window)
 Hexane.Input.KeyboardContext:New(window)
 
--- Create a 'Clearer' which manages clearing the buffer between frames
 local clearer = Hexane.Graphics.Clearer:New()
 clearer:SetColor(100/255, 149/255, 237/255)
 
 local w, h = window:GetFramebufferSize()
 
--- Create a mesh given a list of vertices
 local vertices = {
 	-0.5, -0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 0.0,
 	-0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0,
@@ -90,7 +84,6 @@ local vertices = {
 	-0.5,  0.5, -0.5, 0.8, 0.4, 0.2, 0.0, 1.0
 }
 
--- Shader sources!
 local vertex_source = [[
 #version 150
 
@@ -127,64 +120,49 @@ void main() {
 }
 ]]
 
--- Create some attributes to define our mesh data
 local VertexAttribute = Hexane.Graphics.VertexAttribute
 local position_attribute = VertexAttribute:New(0, 3, "float", 8, 0)
 local color_attribute = VertexAttribute:New(1, 3, "float", 8, 3)
 local texcoord_attrib = VertexAttribute:New(2, 2, "float", 8, 6)
 
--- Create a shader program using our sources above
--- You could also create individual Shader objects for each piece
--- and link those in to prevent recompilation.
 local shader = Hexane.Graphics.ShaderProgram:New()
 shader:AttachSource("vertex", vertex_source)
 shader:AttachSource("fragment", fragment_source)
 
--- Assign these attributes positions
 shader:AddAttribute(0, "position")
 shader:AddAttribute(1, "color")
 shader:AddAttribute(2, "texcoord")
 
--- Link and use the shader!
 shader:Link()
 shader:Use()
 
--- Bind our pixel data out location
 shader:BindFragDataLocation(0, "outColor")
 
--- Add uniforms for matrix MVP transforms
 shader:AddUniform("transform_model", "Matrix4fv")
 shader:AddUniform("transform_view", "Matrix4fv")
 shader:AddUniform("transform_projection", "Matrix4fv")
 
--- Add a texture uniform
 shader:AddUniform("tex", "1i")
 shader:SetUniform("tex", 0)
 
--- Group these attributes!
 local attributes = {
 	position_attribute,
 	color_attribute,
 	texcoord_attrib
 }
 
--- Create cube mesh with the given vertices, elements, and attributes
 local mesh = Hexane.Graphics.Mesh:New(vertices, nil, attributes)
 
--- Load an image using the plain STB interface
 local stbi = Hexane.Bindings.STB.Image
 local out = ffi.new("int[3]")
 local image = stbi.stbi_load("assets/hexane-icon.png", out, out + 1, out + 2, stbi.STBI_rgb_alpha)
 local format = (out[2] == 3) and "rgb" or "rgba"
 
--- Stuff our image into a TextureData object
 local texture_data = Hexane.Graphics.TextureData:New("uint8_t", "rgba", out[0], out[1])
 texture_data:SetData(image, out[0] * out[1] * out[2])
 
--- Get rid of the STB-provided image
 stbi.stbi_image_free(image)
 
--- Load up a texture to contain our image
 local texture = Hexane.Graphics.Texture:New()
 texture:SetData(texture_data)
 texture:Bind(0)
@@ -215,23 +193,22 @@ window:On("Update", function(dt)
 	local speed = 0.05
 
 	if (window.Keyboard:IsKeyDown("w")) then
-		vec:AddLooseVector!(0, 0, 1)
+		vec:AddLooseVectorInPlace(0, 0, 1)
 	elseif (window.Keyboard:IsKeyDown("s")) then
-		vec:AddLooseVector!(0, 0, -1)
+		vec:AddLooseVectorInPlace(0, 0, -1)
 	end
 
 	if (window.Keyboard:IsKeyDown("a")) then
-		vec:AddLooseVector!(1, 0, 0)
+		vec:AddLooseVectorInPlace(1, 0, 0)
 	elseif (window.Keyboard:IsKeyDown("d")) then
-		vec:AddLooseVector!(-1, 0, 0)
+		vec:AddLooseVectorInPlace(-1, 0, 0)
 	end
 
-	vec:Normalize!():Scale!(speed)
+	vec:NormalizeInPlace():ScaleInPlace(speed)
 	vec = camera.Orientation:TransformVector(vec)
-	camera:AddPosition(vec->xyz)
+	camera:AddPosition(vec[1], vec[2], vec[3])
 end)
 
--- Tell the window what to do on draw
 window:On("Draw", function(dt)
 	clearer:Draw()
 
@@ -241,8 +218,7 @@ window:On("Draw", function(dt)
 	camera:Update()
 
 	local projection = Matrix4x4:NewPerspective(math.rad(70), 16/9, 0.01, 10)
-	-- local projection = Matrix4x4:NewOrthographic(-w / h, w / h, 1, -1, 0.01, 10)
-
+	
 	local function draw()
 		shader:SetMatrixUniform("transform_view", camera.View:GetNative())
 		shader:SetMatrixUniform("transform_projection", projection:GetNative())
