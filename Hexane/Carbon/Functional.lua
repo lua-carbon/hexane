@@ -4,6 +4,8 @@
 
 	#description {
 		Provides an interface for functional programming.
+
+		*This module may be slated for significant changes in the future.*
 	}
 ]]
 
@@ -17,8 +19,10 @@ local Functional = {}
 		required object: The table to unpack.
 
 	Unpacks the table into a tuple. The same as `unpack` and `table.unpack`.
+
+	**DEPRECATED** in 1.1: Use Carbon.Unpack (added in 1.0.1)
 }]]
-Functional.Unpack = unpack or table.unpack
+Functional.Unpack = Carbon.Deprecated(unpack or table.unpack, "Functional.Unpack")
 
 --[[#method {
 	class public @bool Functional.AllTuple(...)
@@ -144,13 +148,17 @@ end
 		required list: The list of values to map over.
 
 	Uses a function to perform a mapping of values.
+
+	This method (erroneously) modified the list before 1.1.
 }]]
 function Functional.Map(method, list)
+	local out = {}
+
 	for key, value in ipairs(list) do
-		list[key] = method(value)
+		out[key] = method(value)
 	end
 
-	return list
+	return out
 end
 
 --[[#method {

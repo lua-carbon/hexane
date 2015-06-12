@@ -11,15 +11,25 @@ local Carbon = (...)
 local Graphene = Carbon:GetGraphene()
 local Support = Graphene.Support
 
+Carbon:AddGrapheneSubmodule("Callisto")
+
 --[[#method 1 {
 	class public @void Carbon:ImportCore()
 
 	Imports Carbon's core utilities into the current file for use.
 
-	Presently imports `Async`, `Assert`, `Error`, `IsObject`, and `LoadString`.
+	Presently imports:
+	- Async
+	- Assert
+	- Error
+	- IsObject
+	- LoadString
+	- Deprecated
+	- None
+	- Maybe
 }]]
 function Carbon:ImportCore()
-	return self:Import("Async", "Assert", "Error", "IsObject", "LoadString")
+	return self:Import("Async", "Assert", "Error", "IsObject", "LoadString", "Deprecated", "None", "Maybe")
 end
 
 --[[#property public @dictionary Carbon.Support {
@@ -30,7 +40,7 @@ Carbon.Support = Graphene.Support
 --[[#property public @list Carbon.Version {
 	Contains the current version in the form `{major, minor, revision, status}`.
 }]]
-Carbon.Version = {1, 1, 0, "tip"}
+Carbon.Version = {1, 2, 0, "dev"}
 
 --[[#property public @string Carbon.VersionString {
 	Contains a string version of the current version in the form `"major.minor.revision-status"`.
@@ -43,31 +53,47 @@ Carbon.VersionString = ("%d.%d.%d%s%s"):format(
 	Carbon.Version[4] or ""
 )
 
---[[#property public @map Carbon.Features {
+--[[#property public @set Carbon.Features {
 	Contains a set of features and whether they are enabled or disabled.
 }]]
 Carbon.Features = {
-	Debug = false
+	Debug = false,
+	RemoveDeprecated = false,
+	ExperimentalFeatures = false
 }
 
+--[[#property public None Carbon.None {
+	A type to represent "none", but not @nil.
+}]]
+Carbon.None = newproxy(false)
+
+--[[#property public Maybe Carbon.Maybe {
+	A type to represent a value between `true` and `false`.
+}]]
+Carbon.Maybe = newproxy(false)
+
 --[[#method {
-	class public @void Carbon.Enable(@any feature)
-		required feature: The feature to enable
+	class public @void Carbon.Enable(@any ...)
+		optional ...: The features to enable
 
 	Enables a feature by name.
 }]]
-function Carbon.Enable(feature)
-	Carbon.Features[feature] = true
+function Carbon.Enable(...)
+	for i = 1, select("#", ...) do
+		Carbon.Features[select(i, ...)] = true
+	end
 end
 
 --[[#method {
-	class public @void Carbon.Disable(@any feature)
-		required feature: The feature to disable
+	class public @void Carbon.Disable(@any ...)
+		optional ...: The features to disable
 
 	Disables a feature by name.
 }]]
-function Carbon.Disable(feature)
-	Carbon.Features[feature] = false
+function Carbon.Disable(...)
+	for i = 1, select("#", ...) do
+		Carbon.Features[select(i, ...)] = false
+	end
 end
 
 --[[#method {
@@ -78,6 +104,39 @@ end
 }]]
 function Carbon.Enabled(feature)
 	return (not not Carbon.Features[feature])
+end
+
+--[[#method {
+	class public @any? Carbon.Deprecated(@any? thing)
+		required thing: The thing to mark as deprecated.
+
+	Wraps an object in a deprecation handler.
+
+	If the `RemoveDeprecated` feature is enabled, this method will return nil.
+
+	If `thing` is a function, it will throw a one-time warning on the first call.
+}]]
+function Carbon.Deprecated(thing, name)
+	if (Carbon.Features.RemoveDeprecated) then
+		return nil
+	end
+
+	if (not Carbon.Features.Debug) then
+		return thing
+	end
+
+	local t = type(thing)
+
+	if (t == "function") then
+		name = name or debug.getinfo(thing, "n").name or "[unknown function]"
+
+		return function(...)
+			Carbon.Logging.WarnOnce(name .. " is deprecated")
+			return thing(...)
+		end
+	end
+
+	return thing
 end
 
 --[[#method {
@@ -96,22 +155,28 @@ Carbon.Async = coroutine.wrap
 		optional message: The message to throw if the assertion fails.
 
 	Asserts, like Lua's assert, but calls tostring on the message explicitly.
+
+	**DEPRECATED** in 1.1: Use `assert` or `Exception:ThrowIf` (added in 1.1)
 }]]
 function Carbon.Assert(condition, message)
 	if (not condition) then
 		error(tostring(message) or "Assertion failed!", 2)
 	end
 end
+Carbon.Assert = Carbon.Deprecated(Carbon.Assert, "Carbon.Assert")
 
 --[[#method {
 	class public @void Carbon.Error(...)
 		required ...: Arguments to pass to Lua's `error` function.
 
 	Throws an error, calling tostring on the message explicitly.
+
+	**DEPRECATED** in 1.1: Use `error` or `Exception:Throw` (added in 1.0)
 }]]
 function Carbon.Error(...)
 	error(tostring((...)), select(2, ...))
 end
+Carbon.Error = Carbon.Deprecated(Carbon.Error, "Carbon.Error")
 
 --[[#method {
 	class public @bool Carbon.IsObject(@any object)
@@ -122,7 +187,7 @@ end
 function Carbon.IsObject(x)
 	local t = type(x)
 	if (t == "table" or (t == "userdata" and getmetatable(t) and getmetatable(t).__index)) then
-		return not not t.Is
+		return not not x.Is
 	end
 
 	return false
@@ -132,7 +197,7 @@ end
 	class public @function Carbon.Unpack(@table t)
 		required t: The table to unpack
 
-	Performs a fast
+	Performs a fast unpack on the table.
 }]]
 do
 	local _cache = {}

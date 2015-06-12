@@ -26,7 +26,7 @@ local function feature(test, name, ...)
 			error("Invalid feature definition!")
 		end
 
-		local source = Carbide.ParseCore(snippet, compilation_settings)
+		local source, err = Carbide.ParseCore(snippet, compilation_settings)
 		local compiled, err = Carbon.LoadString(source, "snippet #" .. i)
 
 		if (not compiled) then
@@ -64,7 +64,6 @@ end
 
 function Test:Run(test)
 	local compilation_settings = {
-		FEATURE_LEVEL = 4
 	}
 
 	feature(test, "bang", 

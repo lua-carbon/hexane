@@ -4,6 +4,8 @@
 
 	#description {
 		Provides object orientation features for Carbon.
+
+		TODO: migrate advanced attributes to `Allocator` attribute.
 	}
 ]]
 
@@ -12,9 +14,13 @@ local Carbon = (...)
 local Dictionary = Carbon.Collections.Dictionary
 local List = Carbon.Collections.List
 
-local ok, ffi = pcall(require, "ffi")
-if (not ok) then
-	ffi = nil
+local ffi
+if (Carbon.Support.ffi) then
+	local ok
+	ok, ffi = pcall(require, "ffi")
+	if (not ok) then
+		ffi = nil
+	end
 end
 
 local OOP = {
@@ -22,6 +28,7 @@ local OOP = {
 		-- Inherited attributes
 		InstanceIndirection = true,
 		InstancedMetatable = true,
+		Serialization = true,
 
 		-- Not inherited attributes
 		SparseInstances = false,
@@ -43,29 +50,32 @@ local default_static_attributes = {
 
 -- Utility methods
 local function handle_indirection(class, instance)
-	if (class.__attributes.InstanceIndirection) then
+	if (class:GetAttribute("InstanceIndirection")) then
 		local internal = instance
 		instance = newproxy(true)
 
 		local meta = getmetatable(instance)
 		meta.__index = meta.__index or internal
 		meta.__newindex = meta.__newindex or internal
-		meta.__pairs = meta.__pairs or internal
-		meta.__ipairs = meta.__ipairs or internal
 	end
 
 	return instance
 end
 
 local function apply_metatable(class, instance)
-	if (class.__attributes.InstanceIndirection) then
+	if (class:GetAttribute("InstanceIndirection")) then
 		-- If we wrapped the object in a userdata, we need to apply metatables a little differently.
 		Dictionary.ShallowCopy(class.__metatable, getmetatable(instance))
 	else
 		-- The InstancedMetatable attribute determines whether the metatable
 		-- is class-specific or instance-specific.
 		if (class.__attributes.InstancedMetatable) then
-			setmetatable(instance, Dictionary.ShallowCopy(class.__metatable, Dictionary.ShallowCopy(getmetatable(instance))))
+			local target
+			if (getmetatable(instance)) then
+				target = Dictionary.ShallowCopy(getmetatable(instance))
+			end
+
+			setmetatable(instance, Dictionary.ShallowCopy(class.__metatable, target))
 		else
 			setmetatable(instance, class.__metatable)
 		end
@@ -80,9 +90,9 @@ OOP.Attributes = {
 }
 
 --[[#method {
-	class public void OOP:RegisterAttribute(@string type, @string name, function method)
+	class public void OOP:RegisterAttribute(@string type, @any identifier, function method)
 		required type: The type of attribute (Class, PreInitialize, PostInitialize, or Copy).
-		required name: The name of the attribute as a class would call it.
+		required identifier: The identifier of the attribute.
 		required method: The class applicator. For function signatures, see below.
 
 	Registers a new custom class attribute.
@@ -102,7 +112,7 @@ OOP.Attributes = {
 	- Copy: `@void function(original, copy)`
 		Called after the copied object has been allocated and filled.
 }]]
-function OOP:RegisterAttribute(type, name, method)
+function OOP:RegisterAttribute(type, identifier, method)
 	local typeset = self.Attributes[type]
 
 	if (not typeset) then
@@ -111,14 +121,14 @@ function OOP:RegisterAttribute(type, name, method)
 
 	local out
 	for i, attribute in ipairs(typeset) do
-		if (attribute[1] == name) then
+		if (attribute[1] == identifier) then
 			out = attribute
 			break
 		end
 	end
 
 	if (not out) then
-		out = {name}
+		out = {identifier}
 		table.insert(typeset, out)
 	end
 
@@ -126,14 +136,14 @@ function OOP:RegisterAttribute(type, name, method)
 end
 
 --[[#method {
-	class public void OOP:SetAttributeInherited(@string name, @bool inherited)
-		required name: The name of the attribute to define a value for.
+	class public void OOP:SetAttributeInherited(@any identifier, @bool inherited)
+		required identifier: The identifier of the attribute to define a value for.
 		required inherited: Whether inheriting a class will also inherit this attribute.
 
 	Marks an attribute as inherited or not inherited explicitly.
 }]]
-function OOP:SetAttributeInherited(name, inherited)
-	self.__attribute_inheritance[name] = not not inherited
+function OOP:SetAttributeInherited(identifier, inherited)
+	self.__attribute_inheritance[identifier] = not not inherited
 end
 
 -- PooledInstantiation attribute
@@ -148,8 +158,7 @@ OOP:RegisterAttribute("Class", "PooledInstantiation",
 			end
 		end
 
-		class.__members.Destroy = class.__members.Destroy or class.__pool_destructor
-		class.__metatable.__gc = class.__metatable.__gc or class.__pool_destructor
+		class.__members.Destroy = rawget(class.__members, "Destroy") or class.__pool_destructor
 
 		class:Attributes {
 			Allocator = function(self)
@@ -271,6 +280,16 @@ function OOP.BaseClass:Attributes(attributes)
 end
 
 --[[#method {
+	class public @any? BaseClass:GetAttribute(@any attribute)
+		required attribute: The attribute identifier to look up.
+
+	Returns the value of the given attribute for this class.
+}]]
+function OOP.BaseClass:GetAttribute(attribute)
+	return self.__attributes[attribute]
+end
+
+--[[#method {
 	class public self BaseClass:Metatable(@dictionary metatable)
 		required metatable: The metatable to give to instances of this class.
 
@@ -294,6 +313,16 @@ function OOP.BaseClass:Members(members)
 	Dictionary.ShallowCopy(members, self.__members)
 
 	return self
+end
+
+--[[#method  {
+	class public @any? BaseClass:GetMember(@any key)
+		required key: The key of the member to get.
+
+	Returns a defined member in the class, if it is set.
+}]]
+function OOP.BaseClass:GetMember(key)
+	return self.__members[key]
 end
 
 --[[
@@ -328,6 +357,10 @@ function OOP.Object:PlacementNew(instance, ...)
 				local index = Dictionary.ShallowCopy(self.__base_members)
 				Dictionary.ShallowCopy(self.__members, index)
 
+				if (not index.Class) then
+					index.Class = self.ClassPointer
+				end
+
 				if (not index.class) then
 					index.class = self.__class_reference
 				end
@@ -356,19 +389,20 @@ function OOP.Object:PlacementNew(instance, ...)
 
 	-- These attributes all disable member copying
 	if (not (self.__attributes.SparseInstances or self.__attributes.ExplicitInitialization or self.__attributes.EXT_LJ_Struct)) then
-		Dictionary.DeepCopy(self.__base_members, instance, 1)
-		Dictionary.DeepCopy(self.__members, instance, 1)
+		Dictionary.DeepCopy(self.__base_members, instance, false)
+		Dictionary.DeepCopy(self.__members, instance, false)
 	end
 
 	if (not self.__attributes.EXT_LJ_Struct) then
-		instance.self = instance.self or instance
+		instance.self = Carbon.Deprecated(instance.self or instance)
+
+		instance.Class = instance.Class or self.ClassPointer
 		instance.class = instance.class or self.__class_reference
 		instance.Is = instance.Is or self.__is_reference
 
 		-- InstanceIndirection attribute wraps the object in a userdata
 		-- This allows a __gc metamethod with Lua 5.1 and LuaJIT.
 		-- As a side effect, 'self' becomes a userdata
-		-- Get the internal table with self.self
 		instance = handle_indirection(self, instance)
 		apply_metatable(self, instance)
 	end
@@ -427,20 +461,33 @@ end
 
 	Copies the given object.
 }]]
-OOP.Object.__base_members.Copy = function(self, target)
-	local class = self.class
+OOP.Object.__base_members.Copy = function(self, target, datawise, map)
+	local class_pointer = self.Class
 
-	-- Hotfix for Kyle
-	-- TODO: Investigate
-	if (not class) then
+	if (not class_pointer) then
 		return self
 	end
 
+	local class = class_pointer()
+
 	if (not target and class.__attributes.Allocator) then
 		target = class.__attributes.Allocator(self)
+	else
+		target = {}
 	end
 
-	local copy = Dictionary.DeepCopy(self.self, target, true)
+	-- Ensure that class isn't copied
+	if (not map) then
+		map = {}
+	end
+	map[class] = class
+
+	local source = self
+	if (type(self) == "userdata") then
+		source = getmetatable(self).__index
+	end
+
+	local copy = Dictionary.DeepCopy(source, target, false, map)
 
 	copy = handle_indirection(class, copy)
 	apply_metatable(class, copy)
@@ -484,6 +531,12 @@ function OOP:Class(based_on)
 
 	class.__class_reference = newproxy(true)
 	getmetatable(class.__class_reference).__index = class
+	
+	class.__class_reference = Carbon.Deprecated(class.__class_reference)
+
+	class.ClassPointer = function()
+		return class
+	end
 
 	class.__is_reference = newproxy(true)
 	getmetatable(class.__is_reference).__index = class.Is
@@ -507,5 +560,13 @@ end
 function OOP:StaticClass()
 	return OOP:Class(self.StaticObject)
 end
+
+Carbon.Metadata:Set(OOP.Object, {
+	Name = "OOP.Object"
+})
+
+Carbon.Metadata:Set(OOP.StaticObject, {
+	Name = "OOP.StaticObject"
+})
 
 return OOP
